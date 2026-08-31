@@ -1,0 +1,17 @@
+node_modules/
+node_modules_acl_backup/
+.pnpm-store/
+.turbo/
+.next/
+dist/
+coverage/
+*.tsbuildinfo
+
+.env
+.env.*
+!.env.example
+
+.vercel/
+.DS_Store
+Thumbs.db
+*.log

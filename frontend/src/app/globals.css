@@ -1,0 +1,112 @@
+@import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
+
+@theme {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+
+  --color-primary: var(--primary);
+  --color-primary-strong: var(--primary-strong);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-strong: var(--secondary-strong);
+
+  --color-destructive: var(--destructive);
+  --color-ring: var(--ring);
+
+  --color-sidebar: var(--sidebar);
+  --color-canvas: var(--canvas);
+  --color-node-problem: var(--node-problem);
+  --color-node-context: var(--node-context);
+  --color-node-outcome: var(--node-outcome);
+  --color-node-reference: var(--node-reference);
+  --radius-primary: 0.5rem;
+}
+
+:root {
+  --background: #f7f7f5;
+  --surface: #ffffff;
+  --foreground: #20201e;
+  --muted: #6f706b;
+  --border: #e5e5df;
+
+  --primary: #d87a86;
+  --primary-strong: #c96370;
+
+  --secondary: #faf1f2;
+  --secondary-strong: #f6e7e9;
+
+  --destructive: #b54545;
+  --ring: #d87a86;
+  --sidebar: #f4f3f0;
+  --canvas: #fbfbf9;
+  --node-problem: #fff2f3;
+  --node-context: #fff8f8;
+  --node-outcome: #f9eff0;
+  --node-reference: #f5f4f1;
+}
+
+.dark {
+  --background: #171816;
+  --surface: #20211f;
+  --foreground: #f2f2ed;
+  --muted: #adafa8;
+  --border: #343630;
+
+  --primary: #e59ca5;
+  --primary-strong: #efb3ba;
+
+  --secondary: #2d2627;
+  --secondary-strong: #383031;
+
+  --destructive: #d76565;
+  --ring: #e59ca5;
+  --sidebar: #1d1f1c;
+  --canvas: #1c1d1b;
+  --node-problem: #3b292c;
+  --node-context: #35292a;
+  --node-outcome: #402e31;
+  --node-reference: #2b2c29;
+}
+
+* {
+  box-sizing: border-box;
+  border-color: var(--border);
+}
+html {
+  background: var(--background);
+}
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+}
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+::selection {
+  background: color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
+.canvas-grid {
+  background-color: var(--canvas);
+  background-image: radial-gradient(var(--border) 0.7px, transparent 0.7px);
+  background-size: 18px 18px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
