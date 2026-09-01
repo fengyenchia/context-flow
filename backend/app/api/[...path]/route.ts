@@ -130,7 +130,20 @@ async function handler(request: NextRequest, context: Context) {
     }
     if (route === 'account/ai-credentials/gemini/test' && method === 'POST') { const record = state.credentials.get(user.id); if (!record) throw new ApiProblem(404, '尚未設定 Gemini API Key'); const client = new GoogleGenAI({ apiKey: decryptKey(record) }); await client.models.generateContent({ model: geminiModel(), contents: 'Reply with OK.' }); record.lastValidatedAt = new Date(); return ok({ ok: true }); }
     if (route === 'account/ai-credentials/gemini' && method === 'DELETE') { state.credentials.delete(user.id); return ok({ ok: true }); }
-    if (route === 'ai/chat' && method === 'POST') { const data = await body(request); const record = state.credentials.get(user.id); if (!record) throw new ApiProblem(400, '請先在設定頁新增 Gemini API Key'); const client = new GoogleGenAI({ apiKey: decryptKey(record) }); const result = await client.models.generateContent({ model: geminiModel(), contents: requiredString(data.prompt, '問題'), config: { systemInstruction: 'You are ContextFlow, a concise project thinking partner. Reply in the user language using Markdown.' } }); return ok({ content: result.text ?? '', model: geminiModel() }); }
+    if (route === 'ai/chat' && method === 'POST') {
+      const data = await body(request); const record = state.credentials.get(user.id); if (!record) throw new ApiProblem(400, '請先在設定頁新增 Gemini API Key');
+      const client = new GoogleGenAI({ apiKey: decryptKey(record) });
+      try {
+        const result = await client.models.generateContent({ model: geminiModel(), contents: requiredString(data.prompt, '問題'), config: { systemInstruction: 'You are ContextFlow, a concise project thinking partner. Reply in the user language using Markdown.' } });
+        return ok({ content: result.text ?? '', model: geminiModel() });
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error);
+        if (/429|rate.?limit|quota|resource exhausted/i.test(detail)) throw new ApiProblem(429, 'Gemini API 額度或頻率限制，請稍後再試');
+        if (/401|403|api key| unauthoriz|permission/i.test(detail)) throw new ApiProblem(400, 'Gemini API Key 無效或沒有權限');
+        if (/404|not found|model/i.test(detail)) throw new ApiProblem(400, `Gemini 模型「${geminiModel()}」不存在或不可用`);
+        throw new ApiProblem(502, 'Gemini 暫時無法回應，請稍後再試');
+      }
+    }
 
     if (route === 'workspaces' && method === 'GET') return ok([...state.memberships.values()].filter((item) => item.userId === user.id).map((membership) => { const workspace = state.workspace(membership.workspaceId); return { ...workspace, role: membership.role, projectCount: [...state.projects.values()].filter((item) => item.workspaceId === workspace.id).length, memberCount: [...state.memberships.values()].filter((item) => item.workspaceId === workspace.id).length }; }));
     if (route === 'workspaces' && method === 'POST') { const data = await body(request); const workspace = { id: randomUUID(), name: requiredString(data.name, '工作區名稱'), kind: 'shared' as const, createdByUserId: user.id, createdAt: new Date() }; state.workspaces.set(workspace.id, workspace); state.memberships.set(state.memberKey(workspace.id, user.id), { workspaceId: workspace.id, userId: user.id, role: 'owner', joinedAt: new Date() }); return ok({ ...workspace, role: 'owner', projectCount: 0, memberCount: 1 }, 201); }

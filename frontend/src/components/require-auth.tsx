@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { IconLoader2 as Loader2 } from '@tabler/icons-react';
 import { useAuthStore } from '@/stores/auth-store';
 
 export function RequireAuth({ children }: { children: React.ReactNode }) {

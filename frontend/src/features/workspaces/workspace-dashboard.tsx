@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
-import { ArrowRight, FolderKanban, Loader2, Plus, UserPlus, Users } from 'lucide-react';
+import { IconArrowRight as ArrowRight, IconFolder as FolderKanban, IconLoader2 as Loader2, IconPlus as Plus, IconUserPlus as UserPlus, IconUsers as Users } from '@tabler/icons-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

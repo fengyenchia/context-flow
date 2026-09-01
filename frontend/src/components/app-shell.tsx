@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Blocks, Bot, ChevronsUpDown, KeyRound, LayoutGrid, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings, ShieldCheck, X } from 'lucide-react';
+import { IconBlocks as Blocks, IconRobot as Bot, IconSelector as ChevronsUpDown, IconKey as KeyRound, IconLayoutGrid as LayoutGrid, IconLogout as LogOut, IconMenu2 as Menu, IconLayoutSidebarLeftCollapse as PanelLeftClose, IconLayoutSidebarLeftExpand as PanelLeftOpen, IconSettings as Settings, IconShieldCheck as ShieldCheck, IconX as X } from '@tabler/icons-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { logout as logoutApi } from '@/lib/api/auth';

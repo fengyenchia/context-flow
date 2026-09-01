@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, Blocks, FileSearch, GitBranch, Sparkles, Users } from 'lucide-react';
+import { IconArrowRight as ArrowRight, IconBlocks as Blocks, IconFileSearch as FileSearch, IconGitBranch as GitBranch, IconSparkles as Sparkles, IconUsers as Users } from '@tabler/icons-react';
 
 export default function HomePage() {
   return (

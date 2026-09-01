@@ -1,6 +1,6 @@
 'use client';
 
-import { KeyRound, Loader2, Trash2 } from 'lucide-react';
+import { IconKey as KeyRound, IconLoader2 as Loader2, IconTrash as Trash2 } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

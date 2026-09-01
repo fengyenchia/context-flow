@@ -167,6 +167,101 @@ form.max-w-md.rounded-primary.border-border.bg-surface.shadow-lg {
   cursor: text;
 }
 
+/* Chat messages own their role label, bubble, and action row. */
+.ml-10.chat-message-shell,
+.mr-8.chat-message-shell {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+  color: inherit !important;
+}
+.chat-message-role {
+  margin-bottom: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.chat-message-bubble {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-primary);
+  background: var(--surface);
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+}
+.chat-message-user .chat-message-role {
+  text-align: right;
+}
+.chat-message-user .chat-message-bubble {
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+  background: color-mix(in srgb, var(--primary) 12%, var(--surface));
+}
+
+/* One surface per message: no nested white card or second border. */
+.ml-10.chat-message-shell,
+.mr-8.chat-message-shell {
+  border-radius: var(--radius-primary) !important;
+  padding: 0.625rem 0.75rem !important;
+}
+.mr-8.chat-message-shell {
+  background: var(--surface) !important;
+}
+.ml-10.chat-message-shell {
+  background: var(--primary) !important;
+  color: var(--surface) !important;
+}
+.chat-message-shell .chat-message-bubble,
+.chat-message-user .chat-message-bubble {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+}
+.chat-message-user .chat-message-role {
+  color: color-mix(in srgb, var(--surface) 82%, transparent) !important;
+}
+.chat-message-user .chat-message-bubble,
+.chat-message-user .chat-message-bubble p {
+  color: var(--surface) !important;
+}
+
+/* Keep the role label above the colored message surface. */
+.ml-10.chat-message-shell,
+.mr-8.chat-message-shell {
+  background: transparent !important;
+  padding: 0 !important;
+}
+.chat-message-user .chat-message-bubble {
+  border-radius: var(--radius-primary) !important;
+  background: var(--primary) !important;
+  padding: 0.625rem 0.75rem !important;
+}
+.mr-8.chat-message-shell .chat-message-bubble {
+  background: var(--surface) !important;
+  padding: 0.625rem 0.75rem !important;
+}
+.chat-message-user .chat-message-role {
+  color: var(--muted) !important;
+}
+.chat-message-actions {
+  padding-inline: 0.125rem;
+}
+
+/* The legacy outer message wrapper must stay transparent; only content is filled. */
+div.ml-10:has(> .chat-message-shell),
+div.mr-8:has(> .chat-message-shell) {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+  color: inherit !important;
+}
+
 /* Convergence output is an open reading area rather than a bordered card. */
 .workspace-area:nth-child(4) > div > div.flex-1.rounded-primary.border.border-border.bg-surface.p-4.text-sm.leading-7 {
   display: none !important;
@@ -195,4 +290,15 @@ section.workspace-area:nth-child(3) .overflow-auto.p-4 {
   flex: 0 0 auto !important;
   max-height: 4.5rem !important;
   padding: 0 1rem 1rem !important;
+}
+
+/* Compact vertical-layout glyph, matching the Tabler line-icon weight. */
+header > div.flex.items-center.gap-1.rounded-primary.border-border span.text-xs {
+  display: inline-block;
+  font-size: 0 !important;
+  line-height: 1;
+}
+header > div.flex.items-center.gap-1.rounded-primary.border-border span.text-xs::before {
+  content: '⇵';
+  font-size: 1rem;
 }

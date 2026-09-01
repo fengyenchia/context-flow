@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2, RefreshCw, ShieldCheck, UserRoundCog } from 'lucide-react';
+import { IconLoader2 as Loader2, IconRefresh as RefreshCw, IconShieldCheck as ShieldCheck, IconUserCog as UserRoundCog } from '@tabler/icons-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

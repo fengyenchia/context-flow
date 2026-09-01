@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Blocks, CheckCircle2 } from 'lucide-react';
+import { IconBlocks as Blocks, IconCircleCheck as CheckCircle2 } from '@tabler/icons-react';
 
 export function AuthLayout({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
   return (
