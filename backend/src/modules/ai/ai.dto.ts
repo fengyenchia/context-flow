@@ -1,4 +1,4 @@
-import { IsArray, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsArray, IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class ChatDto {
   @IsString()
@@ -8,6 +8,10 @@ export class ChatDto {
   @IsOptional()
   @IsString()
   projectId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  concise?: boolean;
 }
 
 export class SynthesizeDto {

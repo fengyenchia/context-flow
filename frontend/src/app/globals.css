@@ -300,6 +300,9 @@ form.max-w-md.rounded-primary.border-border.bg-surface.shadow-lg {
 .node-content-scroll::-webkit-scrollbar { width: 5px; }
 .node-content-scroll::-webkit-scrollbar-track { background: transparent; }
 .node-content-scroll::-webkit-scrollbar-thumb { border-radius: 999px; background: color-mix(in srgb, var(--primary) 45%, transparent); }
+.node-star-button { position: absolute; top: 0.05rem; right: 0.05rem; z-index: 2; display: grid; place-items: center; width: 1.35rem; height: 1.35rem; border-radius: 999px; color: var(--muted); opacity: 0.45; transition: color 150ms ease, opacity 150ms ease, background 150ms ease; }
+.node-star-button:hover { opacity: 1; background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); }
+.node-star-button[aria-label="取消重要標記"] { opacity: 1; color: var(--primary); }
 .react-flow__minimap { display: none !important; }
 .mini-map-toggle .react-flow__minimap { display: block !important; }
 .workspace-area:nth-child(3) > div > div:last-child button { min-height: 2rem; padding-inline: 0.75rem; font-size: 0.75rem; }
@@ -312,6 +315,11 @@ form.max-w-md.rounded-primary.border-border.bg-surface.shadow-lg {
 .icon-tooltip::after { content: attr(data-tooltip); position: absolute; top: calc(100% + 0.35rem); left: 50%; z-index: 40; transform: translateX(-50%) translateY(-2px); pointer-events: none; white-space: nowrap; border: 1px solid var(--border); border-radius: 0.35rem; background: var(--surface); padding: 0.2rem 0.45rem; color: var(--foreground); font-size: 0.6875rem; line-height: 1.2; box-shadow: 0 2px 6px rgb(0 0 0 / 0.12); opacity: 0; transition: opacity 120ms ease, transform 120ms ease; }
 .icon-tooltip:hover::after, .icon-tooltip:focus-within::after { opacity: 1; transform: translateX(-50%) translateY(0); }
 .mini-map-toggle .icon-tooltip::after { top: auto; bottom: calc(100% + 0.35rem); }
+.workspace-area > div > header .icon-tooltip::after { top: calc(100% + 0.35rem); bottom: auto; }
+.workspace-area > div > header .icon-tooltip::after { left: auto; right: 0; transform: translateY(-2px); }
+.workspace-area > div > header .icon-tooltip:hover::after, .workspace-area > div > header .icon-tooltip:focus-within::after { transform: translateY(0); }
+.react-flow__edge-textbg { fill: transparent !important; stroke: none !important; }
+.react-flow__edge-text { text-anchor: middle; dominant-baseline: middle; }
 .ai-thinking-messages { position: relative; display: flex; flex-direction: column; }
 .ai-thinking-messages > .mx-auto { display: none; }
 .ai-thinking-messages .chat-message-user-actions { display: none; }
@@ -331,7 +339,10 @@ form.max-w-md.rounded-primary.border-border.bg-surface.shadow-lg {
 textarea.max-h-28 + button[type="submit"] { cursor: pointer; background: var(--primary); color: var(--surface); }
 textarea.max-h-28 + button[type="submit"]:disabled { pointer-events: auto !important; cursor: not-allowed; background: var(--border); color: var(--muted); opacity: 0.7; }
 textarea.max-h-28:disabled { cursor: not-allowed; opacity: 0.65; }
-.generating-pulse { animation: generating-pulse 1.4s ease-in-out infinite; }
+button:disabled, button[aria-disabled="true"] { pointer-events: auto !important; cursor: not-allowed !important; }
+button:not(:disabled):not([aria-disabled="true"]) { cursor: pointer; }
+.generating-pulse { animation: generating-pulse 1.4s ease-in-out infinite; cursor: not-allowed !important; }
+.generating-pulse:disabled { pointer-events: auto; cursor: not-allowed !important; }
 @keyframes generating-pulse { 0%, 100% { opacity: 0.58; } 50% { opacity: 1; } }
 @keyframes ai-thinking-dots { 0%, 100% { opacity: 0.25; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-2px); } }
 .grid > .workspace-area:nth-child(1) p.text-sm.text-muted,

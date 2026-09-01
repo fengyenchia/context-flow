@@ -11,6 +11,6 @@ export class AiController {
 
   @Post('chat')
   chat(@Req() request: AuthenticatedRequest, @Body() dto: ChatDto) {
-    return this.ai.chat(request.user.sub, dto.prompt);
+    return this.ai.chat(request.user.sub, dto.prompt, dto.concise === true);
   }
 }
