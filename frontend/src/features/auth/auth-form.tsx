@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Loader2 } from 'lucide-react';
@@ -18,6 +18,15 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (mode !== 'login') return;
+    const flash = window.sessionStorage.getItem('contextflow-auth-message');
+    if (flash) {
+      setMessage(flash);
+      window.sessionStorage.removeItem('contextflow-auth-message');
+    }
+  }, [mode]);
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
@@ -32,7 +41,8 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
         ? await register({ username, email: String(payload.email), password, displayName: String(payload.displayName) })
         : await login({ username, password });
       if (!data.accessToken) {
-        setMessage('註冊成功！請先到 Email 點擊驗證連結，驗證後再登入。');
+        window.sessionStorage.setItem('contextflow-auth-message', '註冊成功！請先到 Email 點擊驗證連結，驗證後再登入。');
+        router.replace('/login');
         return;
       }
       setSession(data.accessToken, data.user);
