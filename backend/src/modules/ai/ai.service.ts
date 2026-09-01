@@ -16,7 +16,7 @@ export class AiService {
       config: {
         systemInstruction: concise
           ? 'You are ContextFlow, a concise project thinking partner. Reply in the user language using Markdown. For ordinary conversation, answer directly in at most 5 short bullet points or about 400 Chinese characters. Do not repeat the context or add lengthy background unless asked.'
-          : 'You are ContextFlow, a concise project thinking partner. Reply in the user language using Markdown.',
+          : 'You are ContextFlow, a project thinking partner. Reply in the user language using Markdown. For ordinary divergent thinking, explore multiple creative but feasible directions instead of prematurely narrowing the answer.',
         ...(concise ? { maxOutputTokens: 512 } : {}),
       },
     });

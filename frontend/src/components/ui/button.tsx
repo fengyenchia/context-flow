@@ -7,11 +7,11 @@ const variants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-primary text-surface hover:bg-primary-strong',
-        secondary: 'bg-secondary text-[var(--foreground)] hover:bg-[var(--secondary-strong)]',
-        outline: 'border border-border bg-surface hover:bg-secondary',
-        ghost: 'hover:bg-secondary',
-        destructive: 'bg-[var(--destructive)] text-surface hover:brightness-90',
+        default: 'bg-primary text-surface hover:bg-primary-strong disabled:hover:bg-primary',
+        secondary: 'bg-secondary text-[var(--foreground)] hover:bg-[var(--secondary-strong)] disabled:hover:bg-secondary',
+        outline: 'border border-border bg-surface hover:bg-secondary disabled:hover:bg-surface',
+        ghost: 'hover:bg-secondary disabled:hover:bg-transparent',
+        destructive: 'bg-[var(--destructive)] text-surface hover:brightness-90 disabled:hover:brightness-100',
       },
       size: { default: 'h-10', sm: 'h-9 px-3', lg: 'h-12 px-6 text-base', icon: 'size-10 px-0' },
     },
