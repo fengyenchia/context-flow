@@ -134,7 +134,7 @@ async function handler(request: NextRequest, context: Context) {
       const data = await body(request); const record = state.credentials.get(user.id); if (!record) throw new ApiProblem(400, '請先在設定頁新增 Gemini API Key');
       const client = new GoogleGenAI({ apiKey: decryptKey(record) });
       try {
-        const result = await client.models.generateContent({ model: geminiModel(), contents: requiredString(data.prompt, '問題'), config: { systemInstruction: 'You are ContextFlow, a concise project thinking partner. Reply in the user language using Markdown.' } });
+        const result = await client.models.generateContent({ model: geminiModel(), contents: requiredString(data.prompt, '問題'), config: { systemInstruction: 'You are ContextFlow, a concise project thinking partner. Reply in the user language using Markdown. Lead with the answer, use short meaningful headings and bullet points when useful, preserve important facts, and remove generic preambles, repetition, filler, and low-value examples. Keep each point specific enough to become a useful knowledge node.' } });
         return ok({ content: result.text ?? '', model: geminiModel() });
       } catch (error) {
         const detail = error instanceof Error ? error.message : String(error);
