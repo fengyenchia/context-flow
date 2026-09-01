@@ -47,6 +47,7 @@ pnpm dev
 
 ## 文件索引
 
+0. [功能盤點與開發狀態](docs/09-product-status.md)
 1. [本機安裝與專案開啟流程](docs/01-local-development.md)
 2. [Neon PostgreSQL 與 migration](docs/02-neon-database.md)
 3. [Cloudflare R2](docs/03-cloudflare-r2.md)

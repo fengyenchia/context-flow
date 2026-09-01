@@ -2,6 +2,8 @@
 
 建議依序完成：
 
+開始閱讀產品現況與未完成項目：[功能盤點與開發狀態](09-product-status.md)。
+
 1. [本機開發](01-local-development.md)：先用 memory mode 確認登入、工作區及專案畫布。
 2. [Neon](02-neon-database.md)：建立正式 PostgreSQL（目前 repository 尚待接線）。
 3. [Gemini](04-gemini-api-key.md)：讓使用者在介面自行設定 AI Key。
