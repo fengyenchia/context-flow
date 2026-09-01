@@ -11,12 +11,16 @@
 
 1. 登入 Neon Console，建立 PostgreSQL project。
 2. 建立 production branch；需要預覽環境時再建立 preview branch。
-3. 從 Connect 畫面複製 pooled connection string。
-4. 放到 `backend/.env.local`：
+3. 從 Connect 畫面複製兩組 connection string：
+   - Pooled：給 Vercel/serverless 執行時使用。
+   - Direct：給 Drizzle migration 使用（Neon 官方建議 migration 使用 direct connection）。
+4. 本機先放到 `backend/.env.local`：
 
 ```dotenv
 DATABASE_URL=postgresql://USER:PASSWORD@HOST/DATABASE?sslmode=require
 ```
+
+本機執行 migration 時，`DATABASE_URL` 暫時改成 Direct connection；正式 Vercel Backend 則使用 Pooled connection。兩者都必須是同一個 Neon branch/database。
 
 不要把連線字串加到 frontend，也不要以 `NEXT_PUBLIC_` 命名。
 
@@ -25,7 +29,7 @@ DATABASE_URL=postgresql://USER:PASSWORD@HOST/DATABASE?sslmode=require
 PowerShell 臨時設定變數後執行：
 
 ```powershell
-$env:DATABASE_URL = "你的 Neon pooled connection string"
+$env:DATABASE_URL = "你的 Neon direct connection string"
 pnpm --filter @context-flow/backend db:migrate
 Remove-Item Env:DATABASE_URL
 ```
@@ -37,6 +41,31 @@ pnpm --filter @context-flow/backend db:generate
 ```
 
 先檢查新產生的 SQL，再對資料庫執行 migration。
+
+## Vercel 正式環境
+
+在 Vercel Backend Project 的 **Settings → Environment Variables** 新增：
+
+```dotenv
+DATA_MODE=neon
+DATABASE_URL=你的 Neon pooled connection string
+```
+
+同時保留 JWT secrets、`USER_API_KEY_ENCRYPTION_KEY`、`FRONTEND_URL`、`PUBLIC_APP_URL`、Resend 與其他服務設定。儲存後重新部署 backend。
+
+## 驗證資料庫連線
+
+1. 在 Neon SQL Editor 執行：
+
+```sql
+select now();
+```
+
+2. 執行 migration 後確認 `drizzle.__drizzle_migrations` 與應用程式需要的資料表已建立。
+3. 開啟 `https://api.context-flow.fengyenchia.com/api/health`。
+4. 註冊一個測試帳號，重新啟動 backend 後再登入，確認資料不是只存在記憶體。
+
+> 目前 ContextFlow 的業務 service 仍使用 `AppStore` memory adapter，尚未把註冊、登入、workspace、project 等操作接到 Neon repository。完成 repository 接線前，即使 `DATA_MODE=neon`，正式資料仍不會完整保存；這是程式碼工作，不是單純環境變數設定。
 
 ## Repository 接線驗收條件
 

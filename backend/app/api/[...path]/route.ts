@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticate, cookieName, createSession, decryptKey, encryptKey, hash, revokeToken, rotateRefresh, setRefreshCookie } from '@/server/auth';
 import { ApiProblem, state, type User } from '@/server/state';
 import { hashPassword, verifyPassword } from '@/server/password';
-import { sendEmail } from '@/server/email';
+import { brandedEmail, sendEmail } from '@/server/email';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -91,20 +91,22 @@ async function handler(request: NextRequest, context: Context) {
       const password = requiredString(data.password, '密碼', 8);
       const user = state.createUser({ username, email, displayName, passwordHash: await hashPassword(password) });
       user.email = email;
-      const session = await createSession(user); const verificationToken = randomBytes(32).toString('base64url'); const verificationId = randomUUID(); state.emailVerifications.set(verificationId, { id: verificationId, userId: user.id, tokenHash: hash(verificationToken), expiresAt: new Date(Date.now() + 24 * 60 * 60_000) });
+      const verificationToken = randomBytes(32).toString('base64url'); const verificationId = randomUUID(); state.emailVerifications.set(verificationId, { id: verificationId, userId: user.id, tokenHash: hash(verificationToken), expiresAt: new Date(Date.now() + 24 * 60 * 60_000) });
       const verifyUrl = `${process.env.PUBLIC_APP_URL || 'http://localhost:3000'}/verify-email?token=${encodeURIComponent(verificationToken)}`;
-      void sendEmail({ to: email, subject: '驗證你的 ContextFlow Email', text: `請開啟此連結驗證帳號：${verifyUrl}`, html: `<p>請開啟此連結驗證帳號：</p><p><a href="${verifyUrl}">${verifyUrl}</a></p>` }).catch((error) => console.error('Verification email failed', error));
-      const response = ok({ accessToken: session.accessToken, user: session.user, emailVerificationSent: true }, 201); setRefreshCookie(response, session.refreshToken); return response;
+      void sendEmail({ to: email, subject: '驗證你的 ContextFlow Email', text: `請點擊連結驗證你的 ContextFlow 帳號：${verifyUrl}`, html: brandedEmail({ eyebrow: 'Email verification', title: '歡迎加入 ContextFlow', body: '請點擊下方按鈕驗證你的 Email，完成後就能開始整理你的專案脈絡。', actionLabel: '驗證 Email', actionUrl: verifyUrl, expires: '此連結 24 小時內有效。若不是你註冊的，請忽略此信。' }) }).catch((error) => console.error('Verification email failed', error));
+      return ok({ user: state.publicUser(user), emailVerificationSent: true }, 201);
     }
+    if (route === 'auth/check-username' && method === 'POST') { const data = await body(request); const username = requiredString(data.username, '帳號').toLowerCase(); return ok({ exists: Boolean(state.findUser(username)) }); }
     if (route === 'auth/verify-email' && method === 'GET') { const token = new URL(request.url).searchParams.get('token'); const record = token ? [...state.emailVerifications.values()].find((item) => item.tokenHash === hash(token)) : undefined; if (!record || record.consumedAt || record.expiresAt < new Date()) throw new ApiProblem(400, 'Email 驗證連結無效或已過期'); const user = state.user(record.userId); user.emailVerifiedAt = new Date(); record.consumedAt = new Date(); return ok({ ok: true, message: 'Email 已驗證' }); }
     if (route === 'auth/login' && method === 'POST') {
       const data = await body(request); const user = state.findUser(requiredString(data.username, '帳號'));
       if (data.email && (!user || user.email !== String(data.email).trim().toLowerCase())) throw new ApiProblem(401, '帳號或密碼錯誤');
       if (!user || user.status !== 'active' || !(await verifyPassword(user.passwordHash, requiredString(data.password, '密碼')))) throw new ApiProblem(401, '帳號或密碼錯誤');
+      if (!user.emailVerifiedAt) throw new ApiProblem(403, '請先驗證 Email，再登入 ContextFlow');
       user.lastLoginAt = new Date(); const session = await createSession(user); const response = ok({ accessToken: session.accessToken, user: session.user }); setRefreshCookie(response, session.refreshToken); return response;
     }
     if (route === 'auth/refresh' && method === 'POST') {
-      const session = await rotateRefresh(request.cookies.get(cookieName)?.value); const response = ok({ accessToken: session.accessToken, user: session.user }); setRefreshCookie(response, session.refreshToken); return response;
+      const session = await rotateRefresh(request.cookies.get(cookieName)?.value); if (!session.user.emailVerifiedAt) throw new ApiProblem(403, '請先驗證 Email，再登入 ContextFlow'); const response = ok({ accessToken: session.accessToken, user: session.user }); setRefreshCookie(response, session.refreshToken); return response;
     }
     if (route === 'auth/logout' && method === 'POST') { revokeToken(request.cookies.get(cookieName)?.value); const response = ok({ ok: true }); response.cookies.set(cookieName, '', { httpOnly: true, path: '/api/auth', maxAge: 0 }); return response; }
     if (route === 'auth/reset-password' && method === 'POST') {
@@ -112,7 +114,7 @@ async function handler(request: NextRequest, context: Context) {
       if (!record || record.consumedAt || record.expiresAt < new Date()) throw new ApiProblem(400, '重設碼無效或已過期');
       const user = state.user(record.userId); user.passwordHash = await hashPassword(requiredString(data.newPassword, '新密碼', 8)); user.tokenVersion += 1; record.consumedAt = new Date(); for (const session of state.sessions.values()) if (session.userId === user.id) session.revokedAt = new Date(); return ok({ ok: true });
     }
-    if (route === 'auth/forgot-password' && method === 'POST') { const data = await body(request); const email = requiredString(data.email, 'Email').toLowerCase(); const target = findUserByEmail(email); if (target) { const resetCode = randomBytes(24).toString('base64url'); state.resets.set(randomUUID(), { id: randomUUID(), userId: target.id, tokenHash: hash(resetCode), expiresAt: new Date(Date.now() + 30 * 60_000) }); const resetUrl = `${process.env.PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?code=${encodeURIComponent(resetCode)}`; void sendEmail({ to: email, subject: '重設 ContextFlow 密碼', text: `請開啟此連結重設密碼：${resetUrl}`, html: `<p><a href="${resetUrl}">重設密碼</a></p>` }).catch((error) => console.error('Password reset email failed', error)); } return ok({ ok: true, message: '若此 Email 存在，重設連結將寄出' }); }
+    if (route === 'auth/forgot-password' && method === 'POST') { const data = await body(request); const username = requiredString(data.username, '帳號').toLowerCase(); const email = requiredString(data.email, 'Email').toLowerCase(); const target = state.findUser(username); if (!target || target.email !== email) throw new ApiProblem(400, '帳號與 Email 不相符'); for (const record of state.resets.values()) if (record.userId === target.id && !record.consumedAt) record.consumedAt = new Date(); const resetCode = randomBytes(24).toString('base64url'); state.resets.set(randomUUID(), { id: randomUUID(), userId: target.id, tokenHash: hash(resetCode), expiresAt: new Date(Date.now() + 30 * 60_000) }); const resetUrl = `${process.env.PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?code=${encodeURIComponent(resetCode)}`; void sendEmail({ to: email, subject: '重設 ContextFlow 密碼', text: `請點擊連結重設密碼：${resetUrl}`, html: brandedEmail({ eyebrow: 'Password reset', title: '重設你的 ContextFlow 密碼', body: '我們收到重設密碼的請求。請點擊下方按鈕後設定新的密碼，不需要手動輸入驗證碼。', actionLabel: '重設密碼', actionUrl: resetUrl, expires: '若你再次要求寄送，這封信的連結會立即失效。若不是你發起的，請忽略此信。' }) }).catch((error) => console.error('Password reset email failed', error)); return ok({ ok: true, message: '重設連結已寄出' }); }
 
     const user = await authenticate(request);
 

@@ -19,11 +19,12 @@ const nav = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const inProject = pathname.includes('/projects/');
   const router = useRouter();
   const user = useAuthStore((state) => state.user)!;
   const clear = useAuthStore((state) => state.clear);
   const [open, setOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(() => pathname.includes('/projects/'));
+  const [collapsed, setCollapsed] = useState(false);
 
   async function logout() {
     await logoutApi().catch(() => undefined);
@@ -54,10 +55,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <RequireAuth>
       <div className="flex min-h-screen">
-        <div className="hidden lg:block">{sidebar}</div>
-        {open && <div className="fixed inset-0 z-50 flex lg:hidden"><button className="absolute inset-0 bg-foreground/35" onClick={() => setOpen(false)} aria-label="關閉導覽" /> <div className="relative">{sidebar}<button className="absolute right-3 top-3 grid size-10 place-items-center rounded-primary" onClick={() => setOpen(false)} aria-label="關閉導覽"><X className="size-5" /></button></div></div>}
+        {!inProject && <div className="hidden lg:block">{sidebar}</div>}
+        {!inProject && open && <div className="fixed inset-0 z-50 flex lg:hidden"><button className="absolute inset-0 bg-foreground/35" onClick={() => setOpen(false)} aria-label="關閉導覽" /> <div className="relative">{sidebar}<button className="absolute right-3 top-3 grid size-10 place-items-center rounded-primary" onClick={() => setOpen(false)} aria-label="關閉導覽"><X className="size-5" /></button></div></div>}
         <div className="min-w-0 flex-1">
-          <header className="flex h-16 items-center border-b border-border bg-surface px-4 lg:hidden"><Button variant="ghost" size="icon" onClick={() => setOpen(true)} aria-label="開啟導覽"><Menu className="size-5" /></Button><span className="ml-2 font-semibold">ContextFlow</span></header>
+          {!inProject && <header className="flex h-16 items-center border-b border-border bg-surface px-4 lg:hidden"><Button variant="ghost" size="icon" onClick={() => setOpen(true)} aria-label="開啟導覽"><Menu className="size-5" /></Button><span className="ml-2 font-semibold">ContextFlow</span></header>}
           <main id="main-content" className="min-h-[calc(100vh-4rem)] lg:min-h-screen">{children}</main>
         </div>
       </div>

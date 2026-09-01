@@ -29,7 +29,7 @@ export async function authenticate(request: NextRequest) {
   try {
     const { payload } = await jwtVerify(token, accessSecret, { issuer, audience, algorithms: ['HS256'] });
     const user = state.user(payload.sub!);
-    if (payload.typ !== 'access' || payload.tv !== user.tokenVersion || user.status !== 'active') throw new Error('invalid');
+    if (payload.typ !== 'access' || payload.tv !== user.tokenVersion || user.status !== 'active' || !user.emailVerifiedAt) throw new Error('invalid');
     return user;
   } catch { throw new ApiProblem(401, '登入狀態已失效'); }
 }
@@ -40,7 +40,7 @@ export async function rotateRefresh(token?: string) {
     const { payload } = await jwtVerify(token, refreshSecret, { issuer, audience, algorithms: ['HS256'] });
     const session = state.sessions.get(String(payload.sid));
     const user = state.user(payload.sub!);
-    if (!session || session.revokedAt || session.tokenHash !== hash(token) || session.expiresAt < new Date() || payload.tv !== user.tokenVersion || user.status !== 'active') throw new Error('invalid');
+    if (!session || session.revokedAt || session.tokenHash !== hash(token) || session.expiresAt < new Date() || payload.tv !== user.tokenVersion || user.status !== 'active' || !user.emailVerifiedAt) throw new Error('invalid');
     session.revokedAt = new Date();
     return createSession(user);
   } catch { throw new ApiProblem(401, 'Refresh token 已失效'); }
