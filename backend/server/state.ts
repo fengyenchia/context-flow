@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { db } from '../src/db/client';
-import { appState, aiCredentials, canvasNodes, passwordResetTokens, projects as projectsTable, refreshSessions, users as usersTable, workspaceInvitations, workspaceMembers, workspaces as workspacesTable } from '../src/db/schema';
+import { appState, aiCredentials, canvasEdges, canvasMessages, canvasNodes, canvasResources, canvasSummaries, passwordResetTokens, projects as projectsTable, refreshSessions, users as usersTable, workspaceInvitations, workspaceMembers, workspaces as workspacesTable } from '../src/db/schema';
 import { eq } from 'drizzle-orm';
 
 const asDate = (value: Date | string | null | undefined) => value == null ? null : value instanceof Date ? value : new Date(value);
@@ -79,6 +79,10 @@ class MemoryState {
     // are migrated away from app_state.
     try {
       await db.delete(canvasNodes);
+      await db.delete(canvasEdges);
+      await db.delete(canvasMessages);
+      await db.delete(canvasResources);
+      await db.delete(canvasSummaries);
     await db.delete(workspaceInvitations);
     await db.delete(workspaceMembers);
     await db.delete(projectsTable);
@@ -99,6 +103,13 @@ class MemoryState {
       const rows = [...(snapshot.nodes || []).map((node) => ({ node, zone: 'zone' })), ...(snapshot.convergenceNodes || []).map((node) => ({ node, zone: 'converge' }))];
       const values = rows.map(({ node, zone }) => { const item = node as Record<string, unknown>; const data = (item.data || {}) as Record<string, unknown>; const rawId = String(item.id || ''); const id = /^[0-9a-f-]{36}$/i.test(rawId) ? rawId : randomUUID(); const position = (item.position || {}) as Record<string, unknown>; return { id, projectId, zone, mediaType: String(data.nodeKind || 'text'), title: data.nodeTitle ? String(data.nodeTitle) : null, content: data.nodeContent ? String(data.nodeContent) : null, mediaUrl: data.imageUrl ? String(data.imageUrl) : null, positionX: Number(position.x) || 0, positionY: Number(position.y) || 0, groundingSource: null }; });
       if (values.length) await db.insert(canvasNodes).values(values);
+      const edgeValues = [...(snapshot.edges || []).map((edge) => ({ edge, zone: 'zone' })), ...(snapshot.convergenceEdges || []).map((edge) => ({ edge, zone: 'converge' }))].map(({ edge, zone }) => { const item = edge as Record<string, unknown>; return { projectId, zone, sourceId: String(item.source || ''), targetId: String(item.target || ''), label: item.label ? String(item.label) : null, payload: item }; });
+      if (edgeValues.length) await db.insert(canvasEdges).values(edgeValues);
+      const resourceValues = (snapshot.resources || []).map((resource) => { const item = resource as Record<string, unknown>; return { projectId, resourceKey: String(item.id || randomUUID()), kind: String(item.kind || 'text'), title: String(item.title || '未命名資料'), content: item.content ? String(item.content) : null, url: item.url ? String(item.url) : null, contentHash: item.contentHash ? String(item.contentHash) : null }; });
+      if (resourceValues.length) await db.insert(canvasResources).values(resourceValues);
+      const messageValues = Object.entries(snapshot.conversations || {}).flatMap(([threadKey, messages]) => messages.map((content, sequence) => ({ projectId, threadKey, sequence, role: sequence % 2 === 0 ? 'user' : 'assistant', content: String(content) })));
+      if (messageValues.length) await db.insert(canvasMessages).values(messageValues);
+      if (snapshot.summary) await db.insert(canvasSummaries).values({ projectId, content: snapshot.summary, updatedAt: asDate(snapshot.updatedAt) || new Date() });
     }
     } catch (error) {
       // A normalized-table failure must not turn an otherwise valid API

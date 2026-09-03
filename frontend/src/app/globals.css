@@ -399,3 +399,23 @@ header > div.flex.items-center.gap-1.rounded-primary.border-border span.text-xs:
   content: '⇵';
   font-size: 1rem;
 }
+
+/* Export mode lets the complete canvas content participate in the capture
+   instead of clipping it to the viewport-sized workspace. */
+.context-flow-exporting,
+.context-flow-exporting body,
+.context-flow-exporting .react-flow,
+.context-flow-exporting .react-flow__renderer,
+.context-flow-exporting .react-flow__viewport {
+  overflow: visible !important;
+}
+
+@media print {
+  .context-flow-exporting header,
+  .context-flow-exporting .react-flow__controls,
+  .context-flow-exporting .react-flow__minimap,
+  .context-flow-exporting .canvas-grid > :not(.react-flow) { display: none !important; }
+  .context-flow-exporting,
+  .context-flow-exporting body { height: auto !important; min-height: 0 !important; }
+  .context-flow-exporting .react-flow { height: 900px !important; page-break-inside: avoid; }
+}
