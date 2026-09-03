@@ -47,7 +47,7 @@ export class WorkspacesService {
     this.requireRole(workspaceId, userId, ['owner']);
     this.store.workspaces.delete(workspaceId);
     for (const [key, member] of this.store.memberships) if (member.workspaceId === workspaceId) this.store.memberships.delete(key);
-    for (const [id, project] of this.store.projects) if (project.workspaceId === workspaceId) this.store.projects.delete(id);
+    for (const [id, project] of this.store.projects) if (project.workspaceId === workspaceId) { this.store.projects.delete(id); this.store.canvasSnapshots.delete(id); }
     return { ok: true };
   }
 

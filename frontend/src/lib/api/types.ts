@@ -15,3 +15,4 @@ export interface AiCredential { provider: 'gemini'; keyHint: string; lastValidat
 export interface AdminUser extends CurrentUser { workspaceCount: number; projectCount: number; createdAt: string; lastLoginAt?: string; }
 export interface PasswordResetResult { resetCode: string; expiresAt: string; warning?: string; }
 export interface AiChatResult { content: string; model: string; }
+export interface CanvasSnapshot { nodes: Array<{ id: string; position: { x: number; y: number }; data?: Record<string, unknown>; style?: Record<string, unknown> }>; edges: Array<Record<string, unknown>>; convergenceNodes?: Array<{ id: string; position: { x: number; y: number }; data?: Record<string, unknown>; style?: Record<string, unknown> }>; convergenceEdges?: Array<Record<string, unknown>>; resources?: DataResource[]; conversations?: Record<string, string[]>; summary?: string; updatedAt?: string | null; }

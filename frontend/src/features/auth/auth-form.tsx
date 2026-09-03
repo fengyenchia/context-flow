@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { IconArrowRight as ArrowRight, IconLoader2 as Loader2 } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { checkUsername, login, register } from '@/lib/api/auth';
 import { useAuthStore } from '@/stores/auth-store';
 
@@ -84,7 +85,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
       </div>
       <div className="space-y-2">
         <label htmlFor="password" className="text-sm font-medium">密碼</label>
-        <Input id="password" name="password" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required minLength={8} placeholder="至少 8 個字元" />
+        <PasswordInput id="password" name="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required minLength={8} placeholder="至少 8 個字元" />
       </div>
       {mode === 'login' && <div className="text-right"><button type="button" className="text-sm font-medium text-primary hover:underline" onClick={forgotPassword} disabled={checkingUsername}>{checkingUsername ? '確認中…' : '忘記密碼？'}</button></div>}
       <div id="auth-error" aria-live="polite" className={error ? 'rounded-primary border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive' : 'min-h-0'}>{error}</div>

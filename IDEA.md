@@ -5,12 +5,12 @@
 ## 1. 專案核心資訊
 
 - **專案名稱**：**ContextFlow**
-- **產品定位**：Notion 風格、基於 Gemini 3.6 Flash 與多模態 RAG 的「人機協同思考與專案工作流編排畫布」。
-- **核心價值**：支援多專案隔離、文字/圖片/影片多模態節點、自由切換「左右/上下」流轉佈局，並具備「對話落盤發想 $\rightarrow$ 資料庫 RAG 延伸 $\rightarrow$ 一鍵自動收斂」的完整工作流。
+- **產品定位**：Notion 風格、以 Gemini 為核心的「人機協同思考與專案工作流編排畫布」。
+- **核心價值**：支援多專案隔離、文字/圖片/影片多模態節點、自由切換「左右/上下」流轉佈局，並具備「對話發散 $\rightarrow$ 節點落盤 $\rightarrow$ 收斂整理」的工作流；RAG 延後到收斂階段有明確來源追溯需求時再加入。
 
 ### 1.1 可行性結論
 
-**整體可行，而且產品流程有明確差異化，但不建議第一版同時完成所有多模態、RAG、匯出與自動排版功能。**
+**整體可行，而且產品流程有明確差異化；目前先不做完整 RAG，優先驗證發散到收斂的核心流程。**
 
 ContextFlow 的核心並不是另一個通用白板，而是把「對話、資料依據、發散結果與收斂產物」保留在同一張可追溯的思考圖上。最值得先驗證的假設是：使用者是否真的會反覆使用「對話轉節點 → 節點延伸 → 選取內容收斂」這條主流程。
 
@@ -18,7 +18,7 @@ ContextFlow 的核心並不是另一個通用白板，而是把「對話、資�
 
 1. 帳號登入與每位使用者的多專案隔離。
 2. 文字／Markdown 節點、手動連線、LR/TB 自動排版與多人即時共編。
-3. PDF、純文字與 Markdown 檔案的 RAG；圖片先做儲存與預覽，不急著做完整多模態檢索。
+3. PDF、純文字與 Markdown 檔案先做儲存與預覽；RAG 延後，未來優先接在收斂流程。
 4. Chatbot 串流回覆、回覆轉節點、選取節點延伸。
 5. 使用者「勾選」要收斂的節點後再產生結果，避免整張畫布無限制送入模型。
 
@@ -45,14 +45,14 @@ YouTube、Vimeo、MP4 解析、PNG/SVG 高品質匯出、專案複製、留言�
   ├── API Engine: Next.js 16 Route Handlers（獨立 backend 專案，開發 port 3001）
   ├── API Contract: frontend/lib/api/types.ts + 各功能 API functions
   ├── AI Inference: Google Gemini 3.6 Flash (@google/genai SDK, Structured Outputs)
-  ├── Embedding: gemini-embedding-2（透過環境變數設定型號與維度）
+  ├── Embedding: 延後至收斂專用 RAG 階段再導入
   ├── Database: Neon Serverless PostgreSQL (啟用 pgvector 擴充)
   ├── ORM / Migration: Drizzle ORM + drizzle-kit
   ├── Object Storage: Cloudflare R2（Private Bucket + Presigned URL）
   ├── Authentication: Next.js backend 自建 Username/Password + JWT（jose）
   ├── Password Hashing: Node.js scrypt
   ├── Authorization: Route Handler JWT middleware + RBAC（user / admin）
-  └── Async Jobs: Inngest（處理切片、Embedding、畫布快照與大型匯出）
+  └── Async Jobs: Inngest（未來處理文件切片、Embedding、畫布快照與大型匯出）
 
 [Repository]
   ├── Monorepo: pnpm workspace + Turborepo
@@ -61,7 +61,7 @@ YouTube、Vimeo、MP4 解析、PNG/SVG 高品質匯出、專案複製、留言�
 
 ```
 
-> **版本原則**：模型 ID、Embedding 維度、檔案大小限制與 AI 費率都屬於可變設定，不應散落或寫死在程式碼中。統一由環境變數與 server-only config 管理。預設使用 Gemini 3.6 Flash；新專案的 Embedding 不應再寫成舊的 `Text-Embedding-004`。
+> **版本原則**：模型 ID、Embedding 維度、檔案大小限制與 AI 費率都屬於可變設定，不應散落或寫死在程式碼中。統一由環境變數與 server-only config 管理。預設使用 Gemini 3.6 Flash；RAG 尚未啟用，未來導入時再決定 Embedding 模型與維度。
 
 > **前後端分離邊界**：`frontend` 不直接連 Neon、Gemini 或 Object Storage secret；所有資料與 AI 操作均經 `backend` 的 Next.js Route Handlers。前端只透過 `frontend/src/lib/api` 呼叫 `http://localhost:3001/api`，不引用任何 server code。
 
@@ -216,19 +216,17 @@ export interface ThinkNodeData {
 2. 每則 AI 回覆卡片右上方設有 **`[📌 轉為節點]`** 按鈕。
 3. 點擊後，由 Gemini 將該段文字整理為 `{ title, content, tags }`，自動放置於當前專案的「發散思考區 (Ideate Zone)」。
 
-### 工作流 B：條件式 RAG 延伸（AI Expansion）
+### 工作流 B：發散思考與節點延伸（目前版本）
 
-1. 使用者在畫布選中任一節點，點擊節點上的 `[+ AI 延伸]`。
-2. 系統檢查當前專案是否有上傳資料：
+1. 使用者在畫布選中發散節點，透過專屬對話延伸。
+2. 發散對話使用一般 LLM，依節點脈絡探索多方向、創意且可行的方案，不查詢資料池。
+3. AI 回覆可預覽後轉成節點，並由排版邏輯加入畫布。
 
-- **無資料**：Gemini 進行純創意/架構發散，回傳 2-3 個新節點。
-- **有資料**：將選中節點文字轉為 Embedding，在 Neon 搜尋相似度 Top-3 切片，Gemini 依據資料生成帶有 `groundingSource` 的節點。
-
-3. Dagre.js 計算位置並將新節點 append 至畫布。
+未來若收斂結果需要可驗證依據，再將資料池與發散節點交給收斂專用 RAG 流程；不把 RAG 強制套用到發散階段。
 
 ### 工作流 C：收斂總結區（人機協同）
 
-- **AI 一鍵收斂**：點擊頂部 `[⚡ 一鍵收斂]`，Gemini 整合「資料架構區」+「發散思考區」的所有節點，自動在「收斂總結區」生成：
+- **AI 一鍵收斂**：點擊頂部 `[⚡ 一鍵收斂]`，Gemini 整合「資料架構區」+「發散思考區」的節點，在「收斂總結區」生成。現階段先使用專案內已有內容；未來再視來源追溯需求加入收斂專用 RAG。
 
 1. _MVP 核心功能規格書節點_
 2. _前後端任務相依清單節點_
@@ -554,7 +552,7 @@ CREATE INDEX idx_embeddings_vector ON document_embeddings
 
 - **AI 推理與工作流模組 (AI Reasoning)**：
 - `POST /api/ai/chat`：使用登入者自己的 Gemini API Key，以 SSE／串流回傳結果並支援萃取結構化節點。
-- `POST /api/ai/expand`：以選中節點為基礎進行發散延伸（自動判斷是否有 RAG）。
+- `POST /api/ai/expand`：未來以選中節點為基礎進行發散延伸；目前發散延伸使用一般 LLM，不啟用 RAG。
 - `POST /api/ai/synthesize`：傳入已選取的節點 ID，由後端重新讀取內容後生成收斂區規格。
 
 - **知識庫檔案模組 (Knowledge Base)**：
@@ -595,7 +593,9 @@ CREATE INDEX idx_embeddings_vector ON document_embeddings
 
 ---
 
-## 10. RAG 與 AI 推理規格
+## 10. RAG 與 AI 推理規格（延後設計）
+
+目前版本刻意不啟用完整 RAG。發散思考區使用一般 LLM，避免資料檢索過早限制創意與多方向探索；收斂區先整理資料架構區與發散節點。只有當收斂結果需要可驗證來源、頁碼或片段引用時，才啟動本章的 RAG 管線。
 
 ### 10.1 文件處理管線
 
@@ -682,9 +682,9 @@ Next.js Route Handler 只負責 request validation、權限與 response；SQL、
 * Gemini 串流對話、回覆轉節點、選取節點 AI 延伸、Structured Outputs。
 * 驗收：模型回傳格式錯誤不會建立壞資料；重送 request 不會產生重複節點；有清楚的 loading、cancel、retry 狀態。
 
-### Phase 3：文字型 RAG
+### Phase 3：收斂驗證與文字型 RAG（條件式）
 
-* Cloudflare R2、PDF/TXT/MD、Inngest 切片、Embedding、引用來源與文件刪除。
+* 先完成收斂區的節點選取、摘要與輸出；確認需要來源追溯後，再加入 Cloudflare R2、PDF/TXT/MD、Inngest 切片、Embedding、引用來源與文件刪除。
 * 驗收：沒有自己的 Gemini API Key 時禁止啟動 AI/RAG 並導向設定；上傳失敗可重試；引用可回到正確頁碼／片段；刪除文件後 R2 原始檔與向量都不可再取得。
 
 ### Phase 4：收斂與輸出

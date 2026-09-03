@@ -12,10 +12,10 @@ import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { askProjectAssistant, generateDataZone, getProject } from '@/lib/api/projects';
+import { askProjectAssistant, generateDataZone, getCanvas, getProject, saveCanvas } from '@/lib/api/projects';
 import { useAuthStore } from '@/stores/auth-store';
 import { useVerticalSplit } from './resizable-left-panel';
-import type { DataResource, DataResourceKind, Project } from '@/lib/api/types';
+import type { CanvasSnapshot, DataResource, DataResourceKind, Project } from '@/lib/api/types';
 
 type FlowProps = ComponentProps<typeof BaseReactFlow>;
 function ReactFlow(props: FlowProps) {
@@ -85,7 +85,7 @@ function layoutConvergence(nodes: Node[], edges: Edge[]) {
 }
 function canvasNodeLabel(id: string, kind: CanvasNodeKind, title: string, content: string, imageUrl?: string, color?: string, starred = false) {
   const safeLink = /^https?:\/\//i.test(content) ? content : undefined;
-  return <div className={`node-content-scroll relative max-h-56 overflow-y-auto pr-1 ${starred ? 'node-starred' : ''}`} onWheelCapture={(event) => event.stopPropagation()} onWheel={(event) => event.stopPropagation()} onDoubleClick={(event) => { if ((event.target as Element).closest('.node-star-button')) return; event.stopPropagation(); window.dispatchEvent(new CustomEvent<CanvasNodeEditEvent>('context-flow:edit-node', { detail: { id, kind, title, content, imageUrl, color } })); }}><button type="button" className="node-star-button" aria-label={starred ? '取消重要標記' : '標記為重要'} onClick={(event) => { event.stopPropagation(); window.dispatchEvent(new CustomEvent<CanvasNodeStarEvent>('context-flow:toggle-star', { detail: { id } })); }}><Star className="size-3.5" fill={starred ? 'currentColor' : 'none'} /></button><p className="font-semibold">{title}</p>{kind === 'image' && imageUrl ? <img className="mt-2 max-h-32 w-full rounded object-cover" src={imageUrl} alt={title} /> : kind === 'link' && safeLink ? <a className="mt-1 block truncate text-xs leading-5 text-primary underline underline-offset-2" href={safeLink} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>{content}</a> : <div className="markdown-content mt-1 text-xs leading-5 opacity-70"><ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown></div>}</div>;
+  return <div className="node-content-scroll relative max-h-56 overflow-y-auto pr-1" onWheelCapture={(event) => event.stopPropagation()} onWheel={(event) => event.stopPropagation()} onDoubleClick={(event) => { if ((event.target as Element).closest('.node-star-button')) return; event.stopPropagation(); window.dispatchEvent(new CustomEvent<CanvasNodeEditEvent>('context-flow:edit-node', { detail: { id, kind, title, content, imageUrl, color } })); }}><button type="button" className={`absolute right-[0.05rem] top-[0.05rem] z-[2] grid size-[1.35rem] place-items-center rounded-full text-muted opacity-45 transition-[color,opacity,background] duration-150 hover:bg-primary/10 hover:text-primary hover:opacity-100 ${starred ? 'text-primary opacity-100' : ''}`} aria-label={starred ? '取消重要標記' : '標記為重要'} onClick={(event) => { event.stopPropagation(); window.dispatchEvent(new CustomEvent<CanvasNodeStarEvent>('context-flow:toggle-star', { detail: { id } })); }}><Star className="size-3.5" fill={starred ? 'currentColor' : 'none'} /></button><p className="font-semibold">{title}</p>{kind === 'image' && imageUrl ? <img className="mt-2 max-h-32 w-full rounded object-cover" src={imageUrl} alt={title} /> : kind === 'link' && safeLink ? <a className="mt-1 block truncate text-xs leading-5 text-primary underline underline-offset-2" href={safeLink} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>{content}</a> : <div className="markdown-content mt-1 text-xs leading-5 opacity-70"><ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown></div>}</div>;
 }
 function MarkdownMessage({ text }: { text: string }) {
   return <div className="markdown-content"><ReactMarkdown remarkPlugins={[remarkGfm]}>{normalizeMath(text)}</ReactMarkdown></div>;
@@ -107,7 +107,21 @@ function assistantToPreview(content: string) {
   let conversationRoot: string | undefined;
   let previousId: string | undefined;
   const relations: NodePreview['relations'] = [];
-  const lines = content.split(/\r?\n/).flatMap((value) => { const line = value.trim(); if (!line || /^---+$/.test(line)) return []; if (/^#{1,4}\s+/.test(line) || /^[-*•]\s+|^\d+[.)、]\s+/.test(line)) return [line]; return line.length > 180 ? line.split(/(?<=[。！？!?；;])\s*/).filter(Boolean) : [line]; });
+  const segments: string[] = [];
+  let paragraph: string[] = [];
+  let codeBlock: string[] | null = null;
+  const flushParagraph = () => { if (paragraph.length) { segments.push(paragraph.join(' ').trim()); paragraph = []; } };
+  content.split(/\r?\n/).forEach((value) => {
+    const line = value.trim();
+    if (line.startsWith('```')) { if (codeBlock) { codeBlock.push(line); segments.push(codeBlock.join('\n')); codeBlock = null; } else { flushParagraph(); codeBlock = [line]; } return; }
+    if (codeBlock) { codeBlock.push(line); return; }
+    if (!line || /^---+$/.test(line)) { flushParagraph(); return; }
+    if (/^#{1,4}\s+/.test(line) || /^[-*•]\s+|^\d+[.)、]\s+/.test(line)) { flushParagraph(); segments.push(line); return; }
+    paragraph.push(line);
+  });
+  if (codeBlock) segments.push(codeBlock.join('\n'));
+  flushParagraph();
+  const lines = segments.map((segment) => segment.replace(/^```[^\n]*\n?/, '').replace(/\n?```$/, '').trim()).filter(Boolean);
   const latexLines = lines.filter((line) => /^\\[a-zA-Z]+/.test(line) || /^\$\$?/.test(line));
   if (latexLines.length >= 2 && latexLines.length / Math.max(lines.length, 1) >= 0.5) { const id = `preview-${crypto.randomUUID()}`; return { drafts: [{ id, title: 'LaTeX 程式碼', content: latexLines.join('\n') }], relations: [] as NodePreview['relations'] }; }
   const drafts: PreviewDraft[] = [];
@@ -187,14 +201,14 @@ function colorsByPath(drafts: PreviewDraft[], relations: NodePreview['relations'
 function ChatActionBar({ onRegenerate, onCopy, onCreateNodes }: { onRegenerate: () => void; onCopy: () => void; onCreateNodes: () => void }) {
   return <div className="chat-message-actions mt-2 flex items-center gap-1 text-[11px] text-muted"><button type="button" className="inline-flex items-center gap-1 rounded px-2 py-1 hover:bg-secondary" onClick={onRegenerate}><RefreshCw className="size-3" />重做</button><button type="button" className="inline-flex items-center gap-1 rounded px-2 py-1 hover:bg-secondary" onClick={onCopy}><Copy className="size-3" />複製</button><button type="button" className="inline-flex items-center gap-1 rounded px-2 py-1 text-primary hover:bg-primary/10" onClick={onCreateNodes}><Plus className="size-3" />產生節點</button><button type="button" className="inline-flex items-center gap-1 rounded px-2 py-1 hover:bg-secondary" onClick={() => window.dispatchEvent(new Event('context-flow:new-conversation'))}>新對話</button></div>;
 }
-function EditableUserMessage({ question, username, onResend }: { question: string; username: string; onResend?: (value: string) => void }) {
+function EditableUserMessage({ question, displayName, onResend }: { question: string; displayName: string; onResend?: (value: string) => void }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(question);
-  return <div className="chat-message-shell chat-message-user"><div className="chat-message-role">{username}</div>{editing ? <div className="chat-message-edit-box"><textarea autoFocus value={value} onChange={(event) => setValue(event.target.value)} /><div className="chat-message-edit-actions"><button type="button" onClick={() => { setValue(question); setEditing(false); }}>取消</button><button type="button" disabled={!value.trim()} onClick={() => { setEditing(false); if (onResend) onResend(value.trim()); }}>更新</button></div></div> : <><div className="chat-message-bubble"><p>{value}</p></div><div className="chat-message-actions chat-message-user-actions mt-2 flex items-center justify-end gap-1 text-[11px] text-muted"><button type="button" className="inline-flex items-center gap-1 rounded px-2 py-1 hover:bg-secondary" onClick={() => setEditing(true)}><IconEdit className="size-3" />編輯</button></div></>}</div>;
+  return <div className="chat-message-shell chat-message-user"><div className="chat-message-role">{displayName}</div>{editing ? <div className="chat-message-edit-box"><textarea autoFocus value={value} onChange={(event) => setValue(event.target.value)} /><div className="chat-message-edit-actions"><button type="button" onClick={() => { setValue(question); setEditing(false); }}>取消</button><button type="button" disabled={!value.trim()} onClick={() => { setEditing(false); if (onResend) onResend(value.trim()); }}>更新</button></div></div> : <><div className="chat-message-bubble"><p>{value}</p></div><div className="chat-message-actions chat-message-user-actions mt-2 flex items-center justify-end gap-1 text-[11px] text-muted"><button type="button" className="inline-flex items-center gap-1 rounded px-2 py-1 hover:bg-secondary" onClick={() => setEditing(true)}><IconEdit className="size-3" />編輯</button></div></>}</div>;
 }
 
 export function ProjectCanvas({ projectId }: { projectId: string }) {
-  const router = useRouter(); const root = useRef<HTMLDivElement>(null); const { containerRef: leftPanelRef, topPercent, beginDrag } = useVerticalSplit(); const [project, setProject] = useState<Project | null>(null); const [resources, setResources] = useState<DataResource[]>([]); const [processedResourceIds, setProcessedResourceIds] = useState<string[]>([]); const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]); const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]); const [collapsed, setCollapsed] = useState<Record<Area, boolean>>({ pool: false, zone: false, diverge: false, converge: false }); const [layout, setLayout] = useState<'row' | 'column'>('row'); const [selectedNode, setSelectedNode] = useState<string>(); const [prompt, setPrompt] = useState(''); const [messages, setMessages] = useState<{role: 'user' | 'assistant'; content: string}[]>([]); const [summary, setSummary] = useState(''); const [nodePreview, setNodePreview] = useState<NodePreview | null>(null); const [loading, setLoading] = useState(true); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
+  const router = useRouter(); const root = useRef<HTMLDivElement>(null); const canvasHydrated = useRef(false); const { containerRef: leftPanelRef, topPercent, beginDrag } = useVerticalSplit(); const [project, setProject] = useState<Project | null>(null); const [resources, setResources] = useState<DataResource[]>([]); const [processedResourceIds, setProcessedResourceIds] = useState<string[]>([]); const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]); const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]); const [convergenceSnapshot, setConvergenceSnapshot] = useState<Pick<CanvasSnapshot, 'convergenceNodes' | 'convergenceEdges'>>({ convergenceNodes: [], convergenceEdges: [] }); const [collapsed, setCollapsed] = useState<Record<Area, boolean>>({ pool: false, zone: false, diverge: false, converge: false }); const [layout, setLayout] = useState<'row' | 'column'>('row'); const [selectedNode, setSelectedNode] = useState<string>(); const [prompt, setPrompt] = useState(''); const [messages, setMessages] = useState<{role: 'user' | 'assistant'; content: string}[]>([]); const [summary, setSummary] = useState(''); const [nodePreview, setNodePreview] = useState<NodePreview | null>(null); const [loading, setLoading] = useState(true); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   const conversationMessages = useRef<Record<string, { role: 'user' | 'assistant'; content: string }[]>>({ general: [] });
   const [structureBusy, setStructureBusy] = useState(false);
   const [convergeBusy, setConvergeBusy] = useState(false);
@@ -310,7 +324,7 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
     const rootElement = root.current;
     rootElement?.addEventListener('dblclick', editUserMessage);
     return () => rootElement?.removeEventListener('dblclick', editUserMessage);
-  }, [currentUser?.username]);
+  }, [currentUser?.username, currentUser?.displayName]);
   useGSAP(() => { gsap.fromTo('.workspace-area', { autoAlpha: 0, y: 8 }, { autoAlpha: 1, y: 0, duration: .3, stagger: .05, ease: 'power2.out' }); }, { scope: root, dependencies: [collapsed.pool, collapsed.zone, collapsed.diverge, collapsed.converge, layout], revertOnUpdate: true });
   useEffect(() => { const nextConversation = selectedNode || 'general'; if (activeConversation.current === nextConversation) return; conversationMessages.current[activeConversation.current] = messages; activeConversation.current = nextConversation; setMessages(conversationMessages.current[nextConversation] || []); }, [selectedNode, messages]);
   useEffect(() => { const resetConversation = () => { const id = activeConversation.current; conversationMessages.current[id] = []; conversationHistory.current[id] = []; setMessages([]); setNodePreview(null); }; window.addEventListener('context-flow:new-conversation', resetConversation); return () => window.removeEventListener('context-flow:new-conversation', resetConversation); }, []);
@@ -318,7 +332,9 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
   useEffect(() => { const hasZone = nodes.some((node) => !String(node.id).startsWith('diverge-')); const hasDivergence = nodes.some((node) => String(node.id).startsWith('diverge-')); const button = Array.from(root.current?.querySelectorAll<HTMLButtonElement>('button') || []).find((item) => (item.textContent || '').includes('AI 收斂總結')); if (button) button.disabled = !hasZone || !hasDivergence || convergeBusy; }, [nodes, convergeBusy]);
   useEffect(() => { const candidates = Array.from(root.current?.querySelectorAll<HTMLElement>('*') || []).filter((item) => (item.textContent || '').includes('思考夥伴') && (item.textContent || '').includes('AI Partner')); const header = candidates.sort((left, right) => (left.textContent || '').length - (right.textContent || '').length)[0]; if (!header) return; header.classList.add('conversation-context-header'); const node = selectedNode ? nodes.find((item) => item.id === selectedNode) : undefined; header.dataset.conversationContext = node ? `專屬對話：${String(node.data.nodeTitle || '發散節點')}` : '全域對話'; }, [project, selectedNode, nodes]);
   useEffect(() => { const pending = resources.some((resource) => !processedResourceIds.includes(resource.id)); const previewing = nodePreview?.area === 'zone'; const button = Array.from(root.current?.querySelectorAll<HTMLButtonElement>('button') || []).find((item) => (item.textContent || '').includes('建立資料架構')); if (button) button.disabled = !canEdit || !pending || previewing || structureBusy; }, [canEdit, resources, processedResourceIds, nodePreview, structureBusy]);
-  useEffect(() => { getProject(projectId).then(setProject).catch((reason: Error) => setError(reason.message)).finally(() => setLoading(false)); }, [projectId]);
+  useEffect(() => { const onConvergenceSnapshot = (event: Event) => { const detail = (event as CustomEvent<Pick<CanvasSnapshot, 'convergenceNodes' | 'convergenceEdges'>>).detail; if (detail) setConvergenceSnapshot(detail); }; const requestHydration = () => { if (canvasHydrated.current) window.dispatchEvent(new CustomEvent('context-flow:hydrate-convergence', { detail: convergenceSnapshot })); }; window.addEventListener('context-flow:convergence-snapshot', onConvergenceSnapshot); window.addEventListener('context-flow:request-convergence-hydration', requestHydration); return () => { window.removeEventListener('context-flow:convergence-snapshot', onConvergenceSnapshot); window.removeEventListener('context-flow:request-convergence-hydration', requestHydration); }; }, [convergenceSnapshot]);
+  useEffect(() => { let active = true; Promise.all([getProject(projectId), getCanvas(projectId)]).then(([nextProject, snapshot]) => { if (!active) return; setProject(nextProject); const restoredNodes = snapshot.nodes.map((node) => { const data = node.data || {}; const kind = (data.nodeKind as CanvasNodeKind) || 'text'; const title = String(data.nodeTitle || '未命名節點'); const content = String(data.nodeContent || ''); return { ...node, data: { ...data, label: canvasNodeLabel(node.id, kind, title, content, data.imageUrl as string | undefined, data.nodeColor as string | undefined, Boolean(data.starred)) } } as Node; }); setNodes(restoredNodes); setEdges(snapshot.edges as Edge[]); setConvergenceSnapshot({ convergenceNodes: snapshot.convergenceNodes || [], convergenceEdges: snapshot.convergenceEdges || [] }); window.setTimeout(() => window.dispatchEvent(new CustomEvent('context-flow:hydrate-convergence', { detail: { convergenceNodes: snapshot.convergenceNodes || [], convergenceEdges: snapshot.convergenceEdges || [] } })), 0); setResources(snapshot.resources || []); setSummary(snapshot.summary || ''); const restoredConversations = snapshot.conversations || { general: [] }; conversationHistory.current = restoredConversations; const restoredMessages = Object.fromEntries(Object.entries(restoredConversations).map(([id, history]) => [id, history.map((entry, index) => ({ role: index % 2 === 0 ? 'user' as const : 'assistant' as const, content: entry.replace(/^(使用者|AI)：\s*/, '') }))])); conversationMessages.current = restoredMessages; setMessages(restoredMessages.general || []); canvasHydrated.current = true; }).catch((reason: Error) => { if (active) setError(reason.message); }).finally(() => { if (active) setLoading(false); }); return () => { active = false; canvasHydrated.current = false; }; }, [projectId, setNodes, setEdges]);
+  useEffect(() => { if (!canvasHydrated.current) return; const timer = window.setTimeout(() => { const serializableNodes = nodes.map((node) => ({ id: node.id, position: node.position, data: { ...(node.data as Record<string, unknown>), label: undefined }, style: node.style as Record<string, unknown> | undefined })); void saveCanvas(projectId, { nodes: serializableNodes, edges: edges as Array<Record<string, unknown>>, convergenceNodes: convergenceSnapshot.convergenceNodes || [], convergenceEdges: convergenceSnapshot.convergenceEdges || [], resources, conversations: conversationHistory.current, summary }).catch(() => undefined); }, 500); return () => window.clearTimeout(timer); }, [projectId, nodes, edges, convergenceSnapshot, resources, messages, summary]);
   useEffect(() => { if (!error) return; const timer = window.setTimeout(() => setError(''), 3500); return () => window.clearTimeout(timer); }, [error]);
   const toggle = (area: Area) => setCollapsed((current) => ({ ...current, [area]: !current[area] })); const onConnect = useCallback((connection: Connection) => setEdges((current) => addEdge({ ...connection, type: 'bezier', style: { stroke: 'var(--primary)' } }, current)), [setEdges]);
   function addResource(resource: DataResource) { if (resource.contentHash && resources.some((item) => item.contentHash === resource.contentHash)) { setError('此檔案內容已在資料池中，未重複加入。'); return; } setResources((current) => [...current, resource]); }
@@ -331,18 +347,17 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
     const replacingIndex = replaceMessageIndex.current;
     replaceMessageIndex.current = undefined;
     const activeNode = conversationId === 'general' ? undefined : nodes.find((node) => node.id === conversationId);
-    const resourceContext = resources.length ? `資料池內容（請優先參考）：\n${resources.map((resource) => `- ${resource.title}: ${resource.content || resource.url || ''}`).join('\n').slice(0, 7000)}` : '資料池目前沒有內容，請以一般知識協助思考。';
     const nodeContext = activeNode ? `目前延伸的節點：${String(activeNode.data.nodeTitle || '')}\n${String(activeNode.data.nodeContent || '')}` : '目前是發散思考的共用對話。';
     const history = conversationHistory.current[conversationId] || [];
     const resend = (value: string) => { replaceMessageIndex.current = messages.length; setPrompt(value); window.setTimeout(() => document.querySelector<HTMLTextAreaElement>('textarea.max-h-28')?.closest('form')?.requestSubmit(), 0); };
-    const userContent = <EditableUserMessage question={question} username={currentUser?.username || '你'} onResend={resend} /> as unknown as string;
+      const userContent = <EditableUserMessage question={question} displayName={currentUser?.displayName || currentUser?.username || '你'} onResend={resend} /> as unknown as string;
     const pendingMessages = replacingIndex === undefined ? [...messages, { role: 'user' as const, content: userContent }] : [...messages.slice(0, replacingIndex), { role: 'user' as const, content: userContent }];
     setMessages(pendingMessages);
     setPrompt('');
     setBusy(true);
     setError('');
     try {
-      const result = await askProjectAssistant(projectId, [nodeContext, resourceContext, ...history.slice(-6), `使用者：${question}`].join('\n\n'));
+      const result = await askProjectAssistant(projectId, [nodeContext, ...history.slice(-6), `使用者：${question}`].join('\n\n'));
       const regenerate = () => { setPrompt(question); window.setTimeout(() => document.querySelector<HTMLTextAreaElement>('textarea.max-h-28')?.closest('form')?.requestSubmit(), 0); };
       const copy = () => { void navigator.clipboard?.writeText(result.content); setError('AI 回覆已複製'); };
       const assistantContent = <div className="chat-message-shell"><div className="chat-message-role">AI</div><div className="chat-message-bubble"><MarkdownMessage text={result.content} /></div><ChatActionBar onRegenerate={regenerate} onCopy={copy} onCreateNodes={() => addAnswerToDivergence(result.content, conversationId === 'general' ? undefined : conversationId)} /></div> as unknown as string;
@@ -413,6 +428,16 @@ function NodeToolbar({ area }: { area: 'zone' | 'diverge' | 'converge' }) {
 function ConvergenceNodeLayer() {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const hydrated = useRef(false);
+  useEffect(() => {
+    const hydrate = (event: Event) => { const detail = (event as CustomEvent<Pick<CanvasSnapshot, 'convergenceNodes' | 'convergenceEdges'>>).detail; if (!detail || hydrated.current) return; const restored = (detail.convergenceNodes || []).map((node) => { const data = node.data || {}; const kind = (data.nodeKind as CanvasNodeKind) || 'text'; return { ...node, data: { ...data, label: canvasNodeLabel(node.id, kind, String(data.nodeTitle || '未命名節點'), String(data.nodeContent || ''), data.imageUrl as string | undefined, data.nodeColor as string | undefined, Boolean(data.starred)) } } as Node; }); setNodes(restored); setEdges((detail.convergenceEdges || []) as Edge[]); hydrated.current = true; };
+    window.addEventListener('context-flow:hydrate-convergence', hydrate); window.dispatchEvent(new Event('context-flow:request-convergence-hydration')); return () => window.removeEventListener('context-flow:hydrate-convergence', hydrate);
+  }, [setNodes, setEdges]);
+  useEffect(() => {
+    if (!hydrated.current) return;
+    const serializableNodes = nodes.map((node) => ({ id: node.id, position: node.position, data: { ...(node.data as Record<string, unknown>), label: undefined }, style: node.style as Record<string, unknown> | undefined }));
+    window.dispatchEvent(new CustomEvent('context-flow:convergence-snapshot', { detail: { convergenceNodes: serializableNodes, convergenceEdges: edges as Array<Record<string, unknown>> } }));
+  }, [nodes, edges]);
   useEffect(() => {
     const addNode = (event: Event) => {
       const detail = (event as CustomEvent<CanvasNodeEvent>).detail;

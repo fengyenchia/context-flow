@@ -300,9 +300,6 @@ form.max-w-md.rounded-primary.border-border.bg-surface.shadow-lg {
 .node-content-scroll::-webkit-scrollbar { width: 5px; }
 .node-content-scroll::-webkit-scrollbar-track { background: transparent; }
 .node-content-scroll::-webkit-scrollbar-thumb { border-radius: 999px; background: color-mix(in srgb, var(--primary) 45%, transparent); }
-.node-star-button { position: absolute; top: 0.05rem; right: 0.05rem; z-index: 2; display: grid; place-items: center; width: 1.35rem; height: 1.35rem; border-radius: 999px; color: var(--muted); opacity: 0.45; transition: color 150ms ease, opacity 150ms ease, background 150ms ease; }
-.node-star-button:hover { opacity: 1; background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); }
-.node-star-button[aria-label="取消重要標記"] { opacity: 1; color: var(--primary); }
 .react-flow__minimap { display: none !important; }
 .mini-map-toggle .react-flow__minimap { display: block !important; }
 .workspace-area:nth-child(3) > div > div:last-child button { min-height: 2rem; padding-inline: 0.75rem; font-size: 0.75rem; }
@@ -341,6 +338,8 @@ textarea.max-h-28 + button[type="submit"]:disabled { pointer-events: auto !impor
 textarea.max-h-28:disabled { cursor: not-allowed; opacity: 0.65; }
 button:disabled, button[aria-disabled="true"] { pointer-events: auto !important; cursor: not-allowed !important; }
 button:not(:disabled):not([aria-disabled="true"]) { cursor: pointer; }
+input[type="password"]::-ms-reveal, input[type="password"]::-ms-clear { display: none; }
+input[type="password"]::-webkit-credentials-auto-fill-button { visibility: hidden; pointer-events: none; position: absolute; right: 0; }
 .generating-pulse { animation: generating-pulse 1.4s ease-in-out infinite; cursor: not-allowed !important; }
 .generating-pulse:disabled { pointer-events: auto; cursor: not-allowed !important; }
 @keyframes generating-pulse { 0%, 100% { opacity: 0.58; } 50% { opacity: 1; } }

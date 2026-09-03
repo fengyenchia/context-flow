@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { AuthenticatedRequest } from '../../common/auth/auth-user.js';
 import { CreateProjectDto } from '../workspaces/workspaces.dto.js';
 import { ProjectsService } from './projects.service.js';
+import { CanvasSnapshotDto } from './canvas.dto.js';
 
 @ApiTags('projects')
 @Controller()
@@ -17,4 +18,10 @@ export class ProjectsController {
 
   @Get('projects/:projectId')
   get(@Req() request: AuthenticatedRequest, @Param('projectId') id: string) { return this.projects.get(request.user.sub, id); }
+
+  @Get('projects/:projectId/canvas')
+  getCanvas(@Req() request: AuthenticatedRequest, @Param('projectId') id: string) { return this.projects.getCanvas(request.user.sub, id); }
+
+  @Put('projects/:projectId/canvas')
+  saveCanvas(@Req() request: AuthenticatedRequest, @Param('projectId') id: string, @Body() dto: CanvasSnapshotDto) { return this.projects.saveCanvas(request.user.sub, id, dto); }
 }

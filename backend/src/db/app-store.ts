@@ -80,6 +80,17 @@ export interface PasswordResetRecord {
   consumedAt?: Date;
 }
 
+export interface CanvasSnapshotRecord {
+  nodes: unknown[];
+  edges: unknown[];
+  convergenceNodes?: unknown[];
+  convergenceEdges?: unknown[];
+  resources?: unknown[];
+  conversations?: Record<string, string[]>;
+  summary?: string;
+  updatedAt: Date;
+}
+
 @Injectable()
 export class AppStore {
   readonly users = new Map<string, UserRecord>();
@@ -90,6 +101,7 @@ export class AppStore {
   readonly sessions = new Map<string, RefreshSessionRecord>();
   readonly credentials = new Map<string, AiCredentialRecord>();
   readonly passwordResets = new Map<string, PasswordResetRecord>();
+  readonly canvasSnapshots = new Map<string, CanvasSnapshotRecord>();
   readonly adminAudit: Record<string, unknown>[] = [];
   readonly workspaceAudit: Record<string, unknown>[] = [];
 
