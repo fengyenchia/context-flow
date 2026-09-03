@@ -2,10 +2,10 @@
 
 ## 目前實作狀態
 
-`backend/src/db/schema.ts` 與 `backend/drizzle/0000_initial.sql` 已定義帳號、refresh session、AI credential、workspace membership、project、document 與 canvas node。`backend/src/db/client.ts` 也可建立 Neon HTTP client。
+`backend/src/db/schema.ts` 與 `backend/drizzle/` migration 定義帳號、refresh session、AI credential、workspace membership、project、document、canvas node 與 API 狀態快照。`backend/src/db/client.ts` 建立 Neon HTTP client。
 
 > [!WARNING]
-> 目前 service 還直接操作 `AppStore` 的 Map，尚未改成 Neon repository。即使設定 `DATABASE_URL`，業務資料也不會自動寫入 Neon。這是正式部署前的必要開發項目，不應只靠改 `DATA_MODE=neon` 當成已完成。
+> Next.js API 現在透過 Drizzle 將使用者、工作區、成員、專案、邀請、session、API Key、重設 token 與畫布節點寫入 Neon 的正規化資料表。`app_state` 暫時保留作既有資料的相容備份與一次性遷移來源。
 
 ## 建立 Neon 專案
 
@@ -65,7 +65,7 @@ select now();
 3. 開啟 `https://api.context-flow.fengyenchia.com/api/health`。
 4. 註冊一個測試帳號，重新啟動 backend 後再登入，確認資料不是只存在記憶體。
 
-> 目前 ContextFlow 的業務 service 仍使用 `AppStore` memory adapter，尚未把註冊、登入、workspace、project 等操作接到 Neon repository。完成 repository 接線前，即使 `DATA_MODE=neon`，正式資料仍不會完整保存；這是程式碼工作，不是單純環境變數設定。
+> Next.js API 已完成目前流程的 Neon 持久化；請先執行 migration，再啟動 backend。
 
 ## Repository 接線驗收條件
 

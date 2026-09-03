@@ -43,7 +43,7 @@ pnpm dev
 開發環境預設使用 `DATA_MODE=memory`，註冊後即可測試完整帳號與工作區流程；重新啟動後資料會清空。完整環境變數與密鑰產生方式請依照 [本機開發指南](docs/01-local-development.md) 操作。
 
 > [!IMPORTANT]
-> Drizzle schema 與 migration 已建立，但目前 Next.js API repository 仍使用記憶體 store。`DATA_MODE=neon` 尚未完成接線，因此現階段不要把它視為可保存正式資料的 production build。部署前必須先完成 Neon repository；詳見 [Neon 指南](docs/02-neon-database.md)。
+> Next.js API 已透過 Drizzle 將目前的狀態快照持久化到 Neon；請在部署環境設定 `DATABASE_URL` 與 `DATA_MODE=neon`。完整環境變數與 migration 請依照 [Neon 指南](docs/02-neon-database.md) 操作。
 
 ## 文件索引
 

@@ -28,7 +28,7 @@ const requiredString = (value: unknown, name: string, min = 1) => {
   return value.trim();
 };
 const responseCredential = (record: { keyHint: string; updatedAt: Date; lastValidatedAt?: Date }) => ({ provider: 'gemini', keyHint: record.keyHint, updatedAt: record.updatedAt, lastValidatedAt: record.lastValidatedAt });
-const geminiModel = () => process.env.GEMINI_MODEL ?? 'gemini-3.6-flash';
+const geminiModel = () => process.env.GEMINI_MODEL ?? 'gemini-2.5-flash';
 
 type DataResource = { id: string; kind: 'text' | 'link' | 'file' | 'image'; title: string; content?: string; url?: string };
 const dataResources = (value: unknown): DataResource[] => {
@@ -72,13 +72,13 @@ const parseStructure = (text: string, resources: DataResource[]) => {
   } catch { return fallbackStructure(resources); }
 };
 
-async function handler(request: NextRequest, context: Context) {
+async function handleRequest(request: NextRequest, context: Context) {
   try {
     const { path } = await context.params;
     const route = path.join('/');
     const method = request.method;
 
-    if (route === 'health' && method === 'GET') return ok({ status: 'ok', service: 'context-flow-next', dataMode: 'memory', integrations: { neon: Boolean(process.env.DATABASE_URL), r2: Boolean(process.env.R2_ACCOUNT_ID && process.env.R2_BUCKET_NAME), inngest: Boolean(process.env.INNGEST_EVENT_KEY), apiKeyEncryption: Boolean(process.env.USER_API_KEY_ENCRYPTION_KEY) } });
+    if (route === 'health' && method === 'GET') return ok({ status: 'ok', service: 'context-flow-next', dataMode: process.env.DATA_MODE ?? (process.env.DATABASE_URL ? 'neon' : 'memory'), integrations: { neon: Boolean(process.env.DATABASE_URL), r2: Boolean(process.env.R2_ACCOUNT_ID && process.env.R2_BUCKET_NAME), inngest: Boolean(process.env.INNGEST_EVENT_KEY), apiKeyEncryption: Boolean(process.env.USER_API_KEY_ENCRYPTION_KEY) } });
 
     if (route === 'auth/register' && method === 'POST') {
       const data = await body(request);
@@ -97,7 +97,7 @@ async function handler(request: NextRequest, context: Context) {
       return ok({ user: state.publicUser(user), emailVerificationSent: true }, 201);
     }
     if (route === 'auth/check-username' && method === 'POST') { const data = await body(request); const username = requiredString(data.username, '帳號').toLowerCase(); return ok({ exists: Boolean(state.findUser(username)) }); }
-    if (route === 'auth/verify-email' && method === 'GET') { const token = new URL(request.url).searchParams.get('token'); const record = token ? [...state.emailVerifications.values()].find((item) => item.tokenHash === hash(token)) : undefined; if (!record || record.consumedAt || record.expiresAt < new Date()) throw new ApiProblem(400, 'Email 驗證連結無效或已過期'); const user = state.user(record.userId); user.emailVerifiedAt = new Date(); record.consumedAt = new Date(); return ok({ ok: true, message: 'Email 已驗證' }); }
+    if (route === 'auth/verify-email' && method === 'GET') { const token = new URL(request.url).searchParams.get('token'); const record = token ? [...state.emailVerifications.values()].find((item) => item.tokenHash === hash(token)) : undefined; if (!record) throw new ApiProblem(400, 'Email 驗證連結無效或已過期'); const user = state.user(record.userId); if (record.consumedAt && user.emailVerifiedAt) return ok({ ok: true, message: 'Email 已完成驗證，無需重複操作' }); if (record.consumedAt || record.expiresAt < new Date()) throw new ApiProblem(400, 'Email 驗證連結無效或已過期'); user.emailVerifiedAt = new Date(); record.consumedAt = new Date(); return ok({ ok: true, message: 'Email 已驗證' }); }
     if (route === 'auth/login' && method === 'POST') {
       const data = await body(request); const user = state.findUser(requiredString(data.username, '帳號'));
       if (data.email && (!user || user.email !== String(data.email).trim().toLowerCase())) throw new ApiProblem(401, '帳號或密碼錯誤');
@@ -156,6 +156,9 @@ async function handler(request: NextRequest, context: Context) {
     match = route.match(/^workspaces\/([^/]+)\/projects$/);
     if (match && method === 'GET') { state.requireRole(match[1], user.id, ['owner', 'admin', 'editor', 'viewer']); return ok([...state.projects.values()].filter((item) => item.workspaceId === match![1])); }
     if (match && method === 'POST') { state.requireRole(match[1], user.id, ['owner', 'admin', 'editor']); const data = await body(request); const project = { id: randomUUID(), workspaceId: match[1], createdByUserId: user.id, name: requiredString(data.name, '專案名稱'), description: typeof data.description === 'string' ? data.description.trim() : '', layoutDirection: data.layoutDirection === 'TB' ? 'TB' as const : 'LR' as const, createdAt: new Date() }; state.projects.set(project.id, project); return ok({ ...project, roomId: `project:${project.id}` }, 201); }
+    match = route.match(/^projects\/([^/]+)\/canvas$/);
+    if (match && method === 'GET') { const project = state.project(match[1]); state.requireRole(project.workspaceId, user.id, ['owner', 'admin', 'editor', 'viewer']); return ok(state.canvasSnapshots.get(project.id) ?? { nodes: [], edges: [], convergenceNodes: [], convergenceEdges: [], resources: [], conversations: {}, summary: '', updatedAt: null }); }
+    if (match && method === 'PUT') { const project = state.project(match[1]); state.requireRole(project.workspaceId, user.id, ['owner', 'admin', 'editor']); const data = await body(request); if (!Array.isArray(data.nodes) || !Array.isArray(data.edges)) throw new ApiProblem(400, '畫布快照格式不正確'); const snapshot = { nodes: data.nodes, edges: data.edges, convergenceNodes: Array.isArray(data.convergenceNodes) ? data.convergenceNodes : [], convergenceEdges: Array.isArray(data.convergenceEdges) ? data.convergenceEdges : [], resources: Array.isArray(data.resources) ? data.resources : [], conversations: data.conversations && typeof data.conversations === 'object' ? data.conversations as Record<string, string[]> : {}, summary: typeof data.summary === 'string' ? data.summary : '', updatedAt: new Date() }; state.canvasSnapshots.set(project.id, snapshot); return ok(snapshot); }
     match = route.match(/^projects\/([^/]+)$/);
     if (match && method === 'GET') { const project = state.project(match[1]); const membership = state.requireRole(project.workspaceId, user.id, ['owner', 'admin', 'editor', 'viewer']); return ok({ ...project, role: membership.role, roomId: `project:${project.id}` }); }
     match = route.match(/^projects\/([^/]+)\/data-zone\/structure$/);
@@ -167,7 +170,7 @@ async function handler(request: NextRequest, context: Context) {
       const sourceText = resources.map((resource, index) => `[${index + 1}] id=${resource.id}; type=${resource.kind}; title=${resource.title}; content=${resource.content ?? ''}; url=${resource.url ?? ''}`).join('\n');
       const prompt = `You structure mixed research data for a collaborative project. Reply ONLY valid JSON, no markdown. The user reads Traditional Chinese. Produce {"summary":"...","nodes":[{"label":"...","description":"...","sourceIds":["resource id"],"kind":"core|reference|insight"}],"edges":[{"source":0,"target":1,"label":"..."}]}. Nodes are a concise causal/semantic map, maximum 8. Edges use zero-based node indices. Do not invent facts.\n\nSources:\n${sourceText}`;
       try { const result = await client.models.generateContent({ model: geminiModel(), contents: prompt, config: { responseMimeType: 'application/json' } }); return ok(parseStructure(result.text ?? '', resources)); }
-      catch { throw new ApiProblem(502, 'Data Zone 整理失敗，請確認 Gemini Key 與資料內容後重試'); }
+      catch (error) { const detail = error instanceof Error ? error.message : String(error); if (/429|rate.?limit|quota|resource exhausted/i.test(detail)) throw new ApiProblem(429, 'Gemini API 額度或頻率限制，請稍後再試'); if (/401|403|api key|unauthoriz|permission/i.test(detail)) throw new ApiProblem(400, 'Gemini API Key 無效或沒有權限'); if (/404|not found|model/i.test(detail)) throw new ApiProblem(400, `Gemini 模型「${geminiModel()}」不存在或不可用`); throw new ApiProblem(502, 'Gemini 暫時無法回應，請稍後再試'); }
     }
 
     if (route === 'admin/users' && method === 'GET') { requireAdmin(user); return ok([...state.users.values()].map((item) => ({ ...state.publicUser(item), workspaceCount: [...state.memberships.values()].filter((m) => m.userId === item.id).length, projectCount: [...state.projects.values()].filter((project) => Boolean(state.member(project.workspaceId, item.id))).length }))); }
@@ -182,6 +185,13 @@ async function handler(request: NextRequest, context: Context) {
 }
 
 function requireAdmin(user: User) { if (user.role !== 'admin') throw new ApiProblem(403, '僅限管理員'); }
+
+async function handler(request: NextRequest, context: Context) {
+  await state.hydrate();
+  const response = await handleRequest(request, context);
+  await state.persist();
+  return response;
+}
 
 export const GET = handler;
 export const POST = handler;

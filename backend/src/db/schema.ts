@@ -134,6 +134,55 @@ export const canvasNodes = pgTable('canvas_nodes', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const canvasEdges = pgTable('canvas_edges', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  zone: varchar('zone', { length: 20 }).notNull(),
+  sourceId: text('source_id').notNull(),
+  targetId: text('target_id').notNull(),
+  label: text('label'),
+  payload: jsonb('payload'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const canvasResources = pgTable('canvas_resources', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  resourceKey: varchar('resource_key', { length: 255 }).notNull(),
+  kind: varchar('kind', { length: 20 }).notNull(),
+  title: varchar('title', { length: 255 }).notNull(),
+  content: text('content'),
+  url: text('url'),
+  contentHash: varchar('content_hash', { length: 128 }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const canvasMessages = pgTable('canvas_messages', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  threadKey: varchar('thread_key', { length: 100 }).notNull(),
+  sequence: integer('sequence').notNull(),
+  role: varchar('role', { length: 20 }).notNull(),
+  content: text('content').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const canvasSummaries = pgTable('canvas_summaries', {
+  projectId: uuid('project_id').primaryKey().references(() => projects.id, { onDelete: 'cascade' }),
+  content: text('content').notNull().default(''),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Transitional aggregate used by the Next API while individual repositories
+// are being split out. It keeps the existing API state durable in Neon.
+export const appState = pgTable('app_state', {
+  id: varchar('id', { length: 50 }).primaryKey(),
+  payload: jsonb('payload').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type UserRow = typeof users.$inferSelect;
 export type WorkspaceRow = typeof workspaces.$inferSelect;
 export type ProjectRow = typeof projects.$inferSelect;

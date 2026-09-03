@@ -78,14 +78,27 @@ function layoutDivergence(nodes: Node[], edges: Edge[]) {
   return positioned;
 }
 function layoutConvergence(nodes: Node[], edges: Edge[]) {
-  const positioned = layoutGraph(nodes, edges);
-  // Give convergence branches extra horizontal breathing room so each route
-  // stays visually grouped instead of interleaving with its neighbours.
-  return positioned.map((node) => ({ ...node, position: { x: node.position.x * 1.2, y: node.position.y } }));
+  const ids = new Set(nodes.map((node) => node.id));
+  const children = new Map<string, string[]>();
+  const incoming = new Map<string, number>();
+  nodes.forEach((node) => { children.set(node.id, []); incoming.set(node.id, 0); });
+  edges.forEach((edge) => { if (!ids.has(edge.source) || !ids.has(edge.target)) return; children.get(edge.source)?.push(edge.target); incoming.set(edge.target, (incoming.get(edge.target) || 0) + 1); });
+  const roots = nodes.filter((node) => incoming.get(node.id) === 0);
+  const depth = new Map<string, number>();
+  const widths = new Map<string, number>();
+  const visiting = new Set<string>();
+  const subtreeWidth = (id: string): number => { if (widths.has(id)) return widths.get(id)!; if (visiting.has(id)) return 1; visiting.add(id); const branch = (children.get(id) || []).reduce((sum, child) => sum + subtreeWidth(child), 0); visiting.delete(id); const width = Math.max(1, branch); widths.set(id, width); return width; };
+  roots.forEach((root) => subtreeWidth(root.id));
+  const totalWidth = Math.max(1, roots.reduce((sum, root) => sum + (widths.get(root.id) || 1), 0));
+  const positions = new Map<string, { x: number; y: number }>();
+  const gap = 360;
+  const assign = (id: string, start: number, level: number) => { const width = widths.get(id) || 1; const childIds = children.get(id) || []; depth.set(id, level); positions.set(id, { x: (start + width / 2 - totalWidth / 2) * gap, y: 70 + level * 250 }); let cursor = start; childIds.forEach((child) => { const childWidth = widths.get(child) || 1; assign(child, cursor, level + 1); cursor += childWidth; }); };
+  let cursor = 0; roots.forEach((root) => { const width = widths.get(root.id) || 1; assign(root.id, cursor, 0); cursor += width; });
+  return nodes.map((node) => ({ ...node, sourcePosition: Position.Bottom, targetPosition: Position.Top, position: positions.get(node.id) || { x: 0, y: 70 } }));
 }
 function canvasNodeLabel(id: string, kind: CanvasNodeKind, title: string, content: string, imageUrl?: string, color?: string, starred = false) {
   const safeLink = /^https?:\/\//i.test(content) ? content : undefined;
-  return <div className="node-content-scroll relative max-h-56 overflow-y-auto pr-1" onWheelCapture={(event) => event.stopPropagation()} onWheel={(event) => event.stopPropagation()} onDoubleClick={(event) => { if ((event.target as Element).closest('.node-star-button')) return; event.stopPropagation(); window.dispatchEvent(new CustomEvent<CanvasNodeEditEvent>('context-flow:edit-node', { detail: { id, kind, title, content, imageUrl, color } })); }}><button type="button" className={`absolute right-[0.05rem] top-[0.05rem] z-[2] grid size-[1.35rem] place-items-center rounded-full text-muted opacity-45 transition-[color,opacity,background] duration-150 hover:bg-primary/10 hover:text-primary hover:opacity-100 ${starred ? 'text-primary opacity-100' : ''}`} aria-label={starred ? '取消重要標記' : '標記為重要'} onClick={(event) => { event.stopPropagation(); window.dispatchEvent(new CustomEvent<CanvasNodeStarEvent>('context-flow:toggle-star', { detail: { id } })); }}><Star className="size-3.5" fill={starred ? 'currentColor' : 'none'} /></button><p className="font-semibold">{title}</p>{kind === 'image' && imageUrl ? <img className="mt-2 max-h-32 w-full rounded object-cover" src={imageUrl} alt={title} /> : kind === 'link' && safeLink ? <a className="mt-1 block truncate text-xs leading-5 text-primary underline underline-offset-2" href={safeLink} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>{content}</a> : <div className="markdown-content mt-1 text-xs leading-5 opacity-70"><ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown></div>}</div>;
+  return <div className="node-content-scroll relative max-h-56 overflow-y-auto pr-1" onWheelCapture={(event) => event.stopPropagation()} onWheel={(event) => event.stopPropagation()} onDoubleClick={(event) => { if ((event.target as Element).closest('.node-star-button')) return; event.stopPropagation(); window.dispatchEvent(new CustomEvent<CanvasNodeEditEvent>('context-flow:edit-node', { detail: { id, kind, title, content, imageUrl, color } })); }}><button type="button" className={`absolute right-[0.05rem] top-[0.05rem] z-[2] grid size-[1.35rem] place-items-center rounded-full text-muted opacity-45 transition-[color,opacity,background] duration-150 hover:bg-primary/10 hover:text-primary hover:opacity-100 ${starred ? 'text-primary opacity-100' : ''}`} aria-label={starred ? '取消重要標記' : '標記為重要'} onClick={(event) => { event.stopPropagation(); window.dispatchEvent(new CustomEvent<CanvasNodeStarEvent>('context-flow:toggle-star', { detail: { id } })); }}><Star className="size-3.5" fill={starred ? 'currentColor' : 'none'} /></button><p className="break-words font-semibold">{title}</p>{kind === 'image' && imageUrl ? <img className="mt-2 max-h-32 w-full rounded object-cover" src={imageUrl} alt={title} /> : kind === 'link' && safeLink ? <a className="mt-1 block break-all text-xs leading-5 text-primary underline underline-offset-2" href={safeLink} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>{content}</a> : <div className="markdown-content mt-1 break-words text-xs leading-5 opacity-70"><ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown></div>}</div>;
 }
 function MarkdownMessage({ text }: { text: string }) {
   return <div className="markdown-content"><ReactMarkdown remarkPlugins={[remarkGfm]}>{normalizeMath(text)}</ReactMarkdown></div>;
@@ -119,7 +132,8 @@ function assistantToPreview(content: string) {
     if (/^#{1,4}\s+/.test(line) || /^[-*•]\s+|^\d+[.)、]\s+/.test(line)) { flushParagraph(); segments.push(line); return; }
     paragraph.push(line);
   });
-  if (codeBlock) segments.push(codeBlock.join('\n'));
+  const trailingCodeBlock = codeBlock as string[] | null;
+  if (trailingCodeBlock) segments.push(trailingCodeBlock.join('\n'));
   flushParagraph();
   const lines = segments.map((segment) => segment.replace(/^```[^\n]*\n?/, '').replace(/\n?```$/, '').trim()).filter(Boolean);
   const latexLines = lines.filter((line) => /^\\[a-zA-Z]+/.test(line) || /^\$\$?/.test(line));
@@ -157,6 +171,9 @@ function convergenceToPreview(content: string) {
   const drafts: PreviewDraft[] = [];
   const relations: NodePreview['relations'] = [];
   const headingStack: Array<{ level: number; id: string }> = [];
+  const draftById = new Map<string, PreviewDraft>();
+  let currentId: string | undefined;
+  let currentLevel = 0;
   let previousId: string | undefined;
   content.split(/\r?\n/).forEach((value) => {
     const line = value.trim();
@@ -166,21 +183,40 @@ function convergenceToPreview(content: string) {
     const isList = bullet !== line || /^\d+[.)、]\s+/.test(line);
     const cleaned = (heading ? heading[2] : isList ? bullet : line).replace(/\*{1,3}/g, '').trim();
     if (!cleaned || /^(以下|首先|接下來|總結如下|希望這些|好的[，。]?)$/.test(cleaned)) return;
-    const level = heading ? heading[1].length : headingStack.length + 1;
-    const id = `preview-${crypto.randomUUID()}`;
-    drafts.push({ id, title: cleaned.slice(0, 42), content: heading ? '' : cleaned.length > 160 ? `${cleaned.slice(0, 160).trim()}…` : cleaned });
-    if (heading) {
-      while (headingStack.length && headingStack[headingStack.length - 1].level >= level) headingStack.pop();
-      const parent = headingStack[headingStack.length - 1]?.id;
-      if (parent) relations.push({ source: parent, target: id, label: '包含' });
-      headingStack.push({ level, id });
-    } else {
-      const parent = headingStack[headingStack.length - 1]?.id;
-      if (parent) relations.push({ source: parent, target: id });
-      else if (previousId) relations.push({ source: previousId, target: id });
+    if (!heading && isList && currentId && currentLevel >= 2) {
+      const parent = currentId;
+      const id = `preview-${crypto.randomUUID()}`;
+      const labelled = cleaned.match(/^([^：:]{1,16})[：:]\s*(.+)$/);
+      const title = (labelled?.[1] || cleaned.split(/[。！？!?；;]/)[0]).trim().slice(0, 30);
+      const body = (labelled?.[2] || cleaned).trim().slice(0, 260);
+      if (!body) return;
+      const draft = { id, title: title || '補充說明', content: body };
+      drafts.push(draft); draftById.set(id, draft); relations.push({ source: parent, target: id, label: '包含' });
+      return;
     }
-    previousId = id;
+    if (!heading) {
+      if (currentId) {
+        const draft = draftById.get(currentId);
+        if (draft) draft.content = `${draft.content}${draft.content ? '\n' : ''}• ${cleaned}`.slice(0, 900);
+      } else {
+        const id = `preview-${crypto.randomUUID()}`;
+        const draft = { id, title: '重點整理', content: cleaned.slice(0, 900) };
+        drafts.push(draft); draftById.set(id, draft); currentId = id;
+      }
+      return;
+    }
+    const level = heading[1].length;
+    const id = `preview-${crypto.randomUUID()}`;
+    const draft = { id, title: cleaned.slice(0, 42), content: '' };
+    drafts.push(draft); draftById.set(id, draft); currentId = id;
+    currentLevel = level;
+    while (headingStack.length && headingStack[headingStack.length - 1].level >= level) headingStack.pop();
+    const parent = headingStack[headingStack.length - 1]?.id;
+    if (parent) relations.push({ source: parent, target: id, label: level === 2 ? '包含路線' : '包含' });
+    headingStack.push({ level, id });
   });
+  const priority = (draft: PreviewDraft) => /收斂建議|推薦路線|下一步/.test(draft.title) ? 2 : /可行路線|路線\s*[A-ZＡ-Ｚ]/i.test(draft.title) ? 1 : 0;
+  drafts.sort((left, right) => priority(left) - priority(right));
   return { drafts, relations };
 }
 function colorsByPath(drafts: PreviewDraft[], relations: NodePreview['relations']) {
@@ -443,7 +479,7 @@ function ConvergenceNodeLayer() {
       const detail = (event as CustomEvent<CanvasNodeEvent>).detail;
       if (!detail || detail.area !== 'converge') return;
       const id = `converge-${crypto.randomUUID()}`;
-      setNodes((current) => [...current, { id, sourcePosition: Position.Bottom, targetPosition: Position.Top, position: (() => { const canvas = document.querySelector<HTMLElement>('.workspace-area[data-canvas-area="converge"] .react-flow'); const viewport = canvas?.querySelector<HTMLElement>('.react-flow__viewport'); const rect = canvas?.getBoundingClientRect(); const transform = viewport?.style.transform.match(/translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\) scale\(([\d.]+)\)/); if (rect && transform) { const scale = Number(transform[3]) || 1; return { x: (rect.width / 2 - (Number(transform[1]) || 0)) / scale - 110, y: (rect.height / 2 - (Number(transform[2]) || 0)) / scale - 70 }; } return { x: 80 + (current.length % 3) * 250, y: 70 + Math.floor(current.length / 3) * 180 }; })(), data: { label: canvasNodeLabel(id, detail.kind, detail.title, detail.content, detail.imageUrl), nodeKind: detail.kind, nodeTitle: detail.title, nodeContent: detail.content, imageUrl: detail.imageUrl, starred: false }, style: nodeStyle('converge') }]);
+      setNodes((current) => [...current, { id, sourcePosition: Position.Bottom, targetPosition: Position.Top, position: (() => { const canvas = document.querySelector<HTMLElement>('.workspace-area[data-canvas-area="converge"] .react-flow'); const viewport = canvas?.querySelector<HTMLElement>('.react-flow__viewport'); const rect = canvas?.getBoundingClientRect(); const transform = viewport?.style.transform.match(/translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\) scale\(([\d.]+)\)/); if (rect && transform) { const scale = Number(transform[3]) || 1; return { x: (rect.width / 2 - (Number(transform[1]) || 0)) / scale - 110, y: (rect.height / 2 - (Number(transform[2]) || 0)) / scale - 70 }; } return { x: 80 + (current.length % 3) * 250, y: 70 + Math.floor(current.length / 3) * 180 }; })(), data: { label: canvasNodeLabel(id, detail.kind, detail.title, detail.content, detail.imageUrl), nodeKind: detail.kind, nodeTitle: detail.title, nodeContent: detail.content, imageUrl: detail.imageUrl, starred: false }, style: { ...nodeStyle('converge'), width: 280 } }]);
     };
     const updateNode = (event: Event) => {
       const detail = (event as CustomEvent<CanvasNodeUpdateEvent>).detail;
@@ -457,11 +493,13 @@ function ConvergenceNodeLayer() {
       if (!preview.drafts.length) return;
       const ids = new Map(preview.drafts.map((draft) => [draft.id, `converge-${crypto.randomUUID()}`]));
       const colors = colorsByPath(preview.drafts, preview.relations);
-      const created = preview.drafts.map((draft) => { const id = ids.get(draft.id)!; const color = colors.get(draft.id) || 'var(--node-context)'; return { id, sourcePosition: Position.Bottom, targetPosition: Position.Top, position: { x: 80, y: 70 }, data: { label: canvasNodeLabel(id, 'text', draft.title, draft.content, undefined, color), nodeKind: 'text', nodeTitle: draft.title, nodeContent: draft.content, nodeColor: color, starred: false }, style: { ...nodeStyle('converge'), background: color } }; });
-      const createdEdges = preview.relations.flatMap((relation) => { const source = ids.get(relation.source); const target = ids.get(relation.target); return source && target ? [{ id: `converge-edge-${crypto.randomUUID()}`, source, target, ...(relation.label ? { label: relation.label } : {}), type: 'bezier' as const, style: { stroke: 'var(--primary)' }, labelStyle: { fill: 'var(--muted)', fontSize: 11 } }] : []; });
+      const created = preview.drafts.map((draft) => { const id = ids.get(draft.id)!; const color = colors.get(draft.id) || 'var(--node-context)'; return { id, sourcePosition: Position.Bottom, targetPosition: Position.Top, position: { x: 80, y: 70 }, data: { label: canvasNodeLabel(id, 'text', draft.title, draft.content, undefined, color), nodeKind: 'text', nodeTitle: draft.title, nodeContent: draft.content, nodeColor: color, starred: false, convergenceGenerated: true }, style: { ...nodeStyle('converge'), width: 280, background: color } }; });
+      const relationKeys = new Set<string>();
+      const createdEdges = preview.relations.flatMap((relation) => { const source = ids.get(relation.source); const target = ids.get(relation.target); const key = `${relation.source}->${relation.target}`; if (!source || !target || relationKeys.has(key)) return []; relationKeys.add(key); return [{ id: `converge-edge-${crypto.randomUUID()}`, source, target, convergenceGenerated: true, ...(relation.label ? { label: relation.label } : {}), type: 'bezier' as const, style: { stroke: 'var(--primary)' }, labelStyle: { fill: 'var(--muted)', fontSize: 11 } }] });
       const positioned = layoutConvergence(created, createdEdges);
-      setNodes((current) => [...current, ...positioned]);
-      setEdges((current) => [...current, ...createdEdges]);
+      const generatedIds = new Set(nodes.filter((node) => Boolean((node.data as Record<string, unknown>).convergenceGenerated)).map((node) => node.id));
+      setNodes((current) => [...current.filter((node) => !generatedIds.has(node.id)), ...positioned]);
+      setEdges((current) => [...current.filter((edge) => !generatedIds.has(edge.source) && !generatedIds.has(edge.target) && !Boolean((edge as Record<string, unknown>).convergenceGenerated)), ...createdEdges]);
     };
     window.addEventListener('context-flow:add-node', addNode);
     window.addEventListener('context-flow:add-convergence-result', addResult);

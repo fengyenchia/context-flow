@@ -72,7 +72,7 @@ ContextFlow 是以專案脈絡為中心的工作區。使用者可以在同一�
 
 ### 2.5 後端與基礎設施骨架
 
-- NestJS API 模組與全域 JWT／角色 Guard。
+- Next.js API route、JWT／refresh session 與角色權限檢查。
 - 記憶體模式的 `AppStore`，可在本機完成基本流程測試。
 - Drizzle schema 與初始 migration。
 - Cloudflare R2 預簽上傳 URL endpoint。
@@ -84,8 +84,7 @@ ContextFlow 是以專案脈絡為中心的工作區。使用者可以在同一�
 
 ### 3.1 資料保存與多人共編
 
-- `DATA_MODE=neon` 尚未完成 repository 接線；目前重啟 backend 後記憶體資料會消失。
-- 三區節點／連線、資料池、一般／專屬對話歷史與收斂摘要文字目前已透過 canvas snapshot API 自動載入／儲存，但暫存於 memory store；backend 重啟後仍會消失。
+- Next.js API 已透過 Drizzle 將使用者、工作區、成員、專案、邀請、session、API Key、重設 token 與畫布節點寫入 Neon 正規化資料表；`app_state` 暫作相容備份。設定 `DATA_MODE=neon` 並完成 migration 後，backend 重啟不會清空資料。
 - Liveblocks authorization endpoint 已有，但 React Flow 的 Presence、游標、節點與連線同步尚未完整接入畫布。
 - Workspace audit log 目前存在記憶體結構，尚未完整落盤。
 
@@ -117,7 +116,7 @@ ContextFlow 是以專案脈絡為中心的工作區。使用者可以在同一�
 
 ## 4. 後續建議優先順序
 
-1. 先將目前的畫布快照（三區 nodes、edges、對話、資料池、摘要）接到 Neon repository，讓保存跨 backend 重啟持續存在。
+1. 將畫布快照中的 edges、資料池資源、對話紀錄與收斂摘要拆成獨立資料表，完成後即可移除 `app_state` 相容備份。
 2. 再接入 Liveblocks，確保共享工作區的即時同步與權限一致。
 3. 完成節點群組，包含群組底色、群組移動與群組內節點操作。
 4. 設計統一匯出資料格式，再依序實作 Markdown、JSON、PNG/SVG、PDF。
