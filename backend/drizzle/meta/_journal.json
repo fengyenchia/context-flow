@@ -22,6 +22,20 @@
       "when": 1788461373448,
       "tag": "0002_bouncy_lucky_pierre",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788464560430,
+      "tag": "0003_lean_butterfly",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792747847152,
+      "tag": "0004_needy_maddog",
+      "breakpoints": true
     }
   ]
 }

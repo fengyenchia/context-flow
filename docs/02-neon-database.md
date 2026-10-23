@@ -2,10 +2,10 @@
 
 ## 目前實作狀態
 
-`backend/src/db/schema.ts` 與 `backend/drizzle/` migration 定義帳號、refresh session、AI credential、workspace membership、project、document、canvas node 與 API 狀態快照。`backend/src/db/client.ts` 建立 Neon HTTP client。
+`backend/src/db/schema.ts` 與 `backend/drizzle/` migration 定義帳號、refresh session、AI credential、workspace membership、project、document、Email 驗證/密碼重設 token 與完整畫布資料。`backend/src/db/client.ts` 建立 Neon HTTP client；應用程式不再使用 app_state fallback。
 
 > [!WARNING]
-> Next.js API 現在透過 Drizzle 將使用者、工作區、成員、專案、邀請、session、API Key、重設 token 與畫布節點寫入 Neon 的正規化資料表。`app_state` 暫時保留作既有資料的相容備份與一次性遷移來源。
+> Next.js API 透過 Drizzle 將使用者、工作區、成員、專案、邀請、session、API Key、重設 token 與完整畫布資料寫入 Neon 正規化資料表。
 
 ## 建立 Neon 專案
 
@@ -66,6 +66,12 @@ select now();
 4. 註冊一個測試帳號，重新啟動 backend 後再登入，確認資料不是只存在記憶體。
 
 > Next.js API 已完成目前流程的 Neon 持久化；請先執行 migration，再啟動 backend。
+
+目前必須遷移到 0004。0003 在未執行的環境會將舊 app_state 封存為 app_state_legacy_backup，不會直接刪除資料；核對後再自行清理。0004 新增 email_verification_tokens，避免重啟後驗證信失效。
+
+寫入只包含請求變更，並使用單一 Neon batch 交易；畫布更新另外檢查 revision 與交易鎖。失敗回報 503/409，不會吞掉錯誤後顯示已保存。
+
+可在專用測試分支執行 pnpm test:db，步驟見 [上線前操作清單](11-release-checklist.md)。不要使用正式資料庫作為測試分支。
 
 ## Repository 接線驗收條件
 

@@ -21,7 +21,7 @@ export function SecuritySettings() {
     finally { setLoading(false); }
   }
 
-  return <SettingsFrame title="密碼與安全性" description="使用註冊 Email 驗證後重新設定密碼。">
+  return <SettingsFrame title="密碼與安全性">
     <Card><CardHeader><CardTitle>透過 Email 重設密碼</CardTitle><CardDescription>我們會寄送重設連結到 {user?.email || '你的註冊 Email'}。</CardDescription></CardHeader><CardContent className="space-y-4">
       <Button type="button" onClick={sendResetEmail} disabled={loading || !user?.email}>{loading ? '寄送中…' : '寄送 Email 驗證連結'}</Button>
       {message && <p className="text-sm text-primary" role="status">{message}</p>}

@@ -2,6 +2,9 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID }
 import { SignJWT, jwtVerify } from 'jose';
 import type { NextRequest, NextResponse } from 'next/server';
 import { ApiProblem, state, type User } from './state';
+import { db } from '../src/db/client';
+import { refreshSessions } from '../src/db/schema';
+import { and, eq, isNull } from 'drizzle-orm';
 
 const accessSecret = new TextEncoder().encode(process.env.JWT_ACCESS_SECRET || 'development-access-secret-change-before-production');
 const refreshSecret = new TextEncoder().encode(process.env.JWT_REFRESH_SECRET || 'development-refresh-secret-change-before-production');
@@ -12,6 +15,7 @@ export const cookieName = 'contextflow_refresh';
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 
 export async function createSession(user: User) {
+  if (process.env.NODE_ENV === 'production' && (!process.env.JWT_ACCESS_SECRET || !process.env.JWT_REFRESH_SECRET)) throw new ApiProblem(503, '登入服務尚未設定');
   const sid = randomUUID();
   const accessToken = await new SignJWT({ role: user.role, tv: user.tokenVersion, typ: 'access' }).setProtectedHeader({ alg: 'HS256' }).setSubject(user.id).setIssuer(issuer).setAudience(audience).setIssuedAt().setExpirationTime('15m').sign(accessSecret);
   const refreshToken = await new SignJWT({ sid, tv: user.tokenVersion, typ: 'refresh' }).setProtectedHeader({ alg: 'HS256' }).setSubject(user.id).setIssuer(issuer).setAudience(audience).setIssuedAt().setExpirationTime('30d').sign(refreshSecret);
@@ -41,6 +45,10 @@ export async function rotateRefresh(token?: string) {
     const session = state.sessions.get(String(payload.sid));
     const user = state.user(payload.sub!);
     if (!session || session.revokedAt || session.tokenHash !== hash(token) || session.expiresAt < new Date() || payload.tv !== user.tokenVersion || user.status !== 'active' || !user.emailVerifiedAt) throw new Error('invalid');
+    if (db) {
+      const claimed = await db.update(refreshSessions).set({ revokedAt: new Date() }).where(and(eq(refreshSessions.id, session.id), isNull(refreshSessions.revokedAt))).returning({ id: refreshSessions.id });
+      if (!claimed.length) throw new Error('already rotated');
+    }
     session.revokedAt = new Date();
     return createSession(user);
   } catch { throw new ApiProblem(401, 'Refresh token 已失效'); }

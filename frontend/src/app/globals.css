@@ -410,12 +410,26 @@ header > div.flex.items-center.gap-1.rounded-primary.border-border span.text-xs:
   overflow: visible !important;
 }
 
+/* Export controls are React-owned buttons; use a pseudo icon instead of mounting
+   a second React root into their children. */
+header button[data-export-icon] { position: relative; display: grid; width: 2rem; min-width: 2rem; height: 2rem; min-height: 2rem; align-self: center; place-items: center; padding: 0; border: 1px solid #e5e5de; border-radius: 0.35rem; background: var(--surface); color: #242424 !important; font-size: 0; line-height: 1; }
+header button[data-export-icon] > svg { display: none; }
+header button[data-export-icon]::before { position: absolute; top: 50%; left: 50%; display: grid; width: 1.35rem; height: 1.15rem; place-items: center; transform: translate(-50%, -50%); border: 1px solid #242424; border-radius: 0.2rem; color: #242424; font-size: 0.58rem; font-weight: 700; line-height: 1; }
+header button[data-export-icon="pdf"]::before { content: 'PDF'; font-size: 0.48rem; }
+header button[data-export-icon="png"]::before { content: 'PNG'; font-size: 0.45rem; }
+
 @media print {
-  .context-flow-exporting header,
   .context-flow-exporting .react-flow__controls,
   .context-flow-exporting .react-flow__minimap,
   .context-flow-exporting .canvas-grid > :not(.react-flow) { display: none !important; }
   .context-flow-exporting,
   .context-flow-exporting body { height: auto !important; min-height: 0 !important; }
-  .context-flow-exporting .react-flow { height: 900px !important; page-break-inside: avoid; }
+  .context-flow-exporting .react-flow { page-break-inside: avoid; }
 }
+
+.context-flow-exporting [data-export-exclude],
+.context-flow-exporting header button,
+.context-flow-exporting .react-flow__controls,
+.context-flow-exporting .react-flow__minimap { display: none !important; }
+
+.workspace-area[data-readonly="true"] .react-flow__node button { display: none !important; }

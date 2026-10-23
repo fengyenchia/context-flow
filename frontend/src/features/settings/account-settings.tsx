@@ -21,7 +21,7 @@ export function AccountSettings() {
     setMessage('帳號資料已更新。');
   }
 
-  return <SettingsFrame title="帳號設定" description="管理你的公開名稱與登入帳號。">
+  return <SettingsFrame title="帳號設定">
     <Card><CardHeader><CardTitle>個人資料</CardTitle><CardDescription>使用者名稱建立後不可自行更改。</CardDescription></CardHeader><CardContent><form className="space-y-4" onSubmit={save}>
       <Field label="使用者名稱"><Input value={user?.username ?? ''} disabled /></Field>
       <Field label="顯示名稱"><Input value={displayName} onChange={(event) => setDisplayName(event.target.value)} minLength={1} maxLength={100} required /></Field>
@@ -31,8 +31,8 @@ export function AccountSettings() {
   </SettingsFrame>;
 }
 
-export function SettingsFrame({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
-  return <div className="mx-auto max-w-3xl p-5 md:p-10"><h1 className="text-2xl font-semibold tracking-tight">{title}</h1><p className="mt-2 text-sm text-muted">{description}</p><div className="mt-7 space-y-5">{children}</div></div>;
+export function SettingsFrame({ title, children }: { title: string; children: React.ReactNode }) {
+  return <div className="mx-auto max-w-3xl p-5 md:p-10"><h1 className="text-2xl font-semibold tracking-tight">{title}</h1><div className="mt-7 space-y-5">{children}</div></div>;
 }
 
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {

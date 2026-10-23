@@ -1,25 +1,14 @@
-# Liveblocks 多人共編設定
+# Liveblocks 即時共編（尚未接入）
 
-Vercel Function 不適合自行維持 WebSocket server，因此專案採 Liveblocks 管理即時房間。Backend 根據 workspace membership 發行 room session，viewer 只有讀取權，其餘角色可寫入。
+目前共享工作區已實作成員、角色、共同讀取、保存及更新衝突保護，尚未將 React Flow 的節點、連線、Presence 或游標接到 Liveblocks。現行 Next.js API 也沒有可直接使用的 Liveblocks 授權流程，舊骨架不代表已完成。
 
-## 設定
+因此只設定 Liveblocks 金鑰，不會讓畫布自動即時同步。目前應輪流編輯；若兩個分頁保存不同版本，後寫者會收到 409，先匯出 JSON 備份後重載。
 
-1. 在 Liveblocks Dashboard 建立 project。
-2. 建立 Secret key，僅放 backend：
+若未來納入即時多人共編，需另行完成以下程式與測試：
 
-```dotenv
-LIVEBLOCKS_SECRET_KEY=sk_...
-LIVEBLOCKS_WEBHOOK_SECRET=whsec_...
-```
+- 後端依 workspace membership 授權 project 房間；viewer 為唯讀。
+- 節點與連線採可合併的共享資料結構，不能用整份快照互相覆寫。
+- 處理離線、重連、移除成員後的權限與 durable snapshot。
+- 兩個獨立登入瀏覽器的併發編輯與刪除測試。
 
-3. 正式 webhook URL 預留為 `https://你的-backend/api/liveblocks/webhook`。
-
-## 目前狀態
-
-Backend 應以 `/api/collaboration/authorize` 做 membership 授權；frontend 目前先以 React Flow 本機 state 呈現畫布，尚未把 nodes/edges 接到 Liveblocks storage。完成接線時應：
-
-- 以 `project:{projectId}` 當 room id。
-- 先向 Next.js backend authorize endpoint 取得 session，而非把 secret 放 frontend。
-- 將 nodes、edges、presence/cursor 分開；大量文件內容不要放 presence。
-- viewer 關閉 drag、connect 與 mutation。
-- webhook 驗證簽章後再做 audit 或 snapshot。
+參考 [Liveblocks client API](https://liveblocks.io/docs/api-reference/liveblocks-client) 與 [授權權限](https://liveblocks.io/docs/api-reference/authentication/permissions)。在程式接入前，不將 Liveblocks 設定列為目前版本的部署必做項。

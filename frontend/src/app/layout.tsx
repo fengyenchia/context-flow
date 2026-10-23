@@ -10,6 +10,10 @@ const mono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' });
 export const metadata: Metadata = {
   title: { default: 'ContextFlow', template: '%s · ContextFlow' },
   description: 'A collaborative canvas for turning context into clear project decisions.',
+  icons: {
+    icon: { url: '/brand/context-flow-logo.png', type: 'image/png' },
+    apple: '/brand/context-flow-logo.png',
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

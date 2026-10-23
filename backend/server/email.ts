@@ -8,6 +8,7 @@ export async function sendEmail(input: MailInput) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
   if (!apiKey || !from) {
+    if (process.env.NODE_ENV === 'production') throw new Error('Email service is not configured');
     console.info(`[email:development] To ${input.to}\n${input.text}`);
     return { delivered: false, development: true };
   }

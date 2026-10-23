@@ -33,7 +33,7 @@ export function UserManagement() {
   if (currentUser?.role !== 'admin') return <div className="p-10"><p className="text-destructive">此頁面僅限管理員使用。</p></div>;
 
   return <div className="p-5 md:p-10">
-    <div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-2xl font-semibold tracking-tight">帳號管理</h1><p className="mt-2 text-sm text-muted">管理所有使用者、權限、登入狀態與密碼重設。</p></div><Button variant="outline" onClick={load}><RefreshCw className="size-4" />重新整理</Button></div>
+    <div className="flex flex-wrap items-end justify-between gap-3"><h1 className="text-2xl font-semibold tracking-tight">帳號管理</h1><Button variant="outline" onClick={load}><RefreshCw className="size-4" />重新整理</Button></div>
     {error && <p className="mt-5 rounded-primary bg-destructive/10 p-3 text-sm text-destructive" role="alert">{error}</p>}
     <div className="mt-6 overflow-hidden rounded-primary border bg-surface">
       {loading ? <div className="grid min-h-48 place-items-center"><Loader2 className="size-6 animate-spin" /></div> : <div className="overflow-x-auto"><table className="w-full min-w-[820px] text-left text-sm"><thead className="border-b bg-secondary text-xs text-muted"><tr><th className="p-4">使用者</th><th className="p-4">狀態</th><th className="p-4">系統角色</th><th className="p-4">使用量</th><th className="p-4">操作</th></tr></thead><tbody className="divide-y">

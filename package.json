@@ -2,17 +2,26 @@
   "name": "context-flow",
   "private": true,
   "packageManager": "pnpm@11.19.0",
+  "engines": { "node": "24.x" },
   "scripts": {
     "dev": "turbo run dev",
     "dev:inngest": "pnpm dlx inngest-cli@latest dev -u http://localhost:3001/api/inngest",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
-    "test": "turbo run test",
+    "test": "node scripts/test.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:api": "node backend/node_modules/vitest/vitest.mjs run --config backend/vitest.config.e2e.ts",
+    "test:db": "node scripts/test-db.mjs",
+    "check:env": "node scripts/check-env.mjs",
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "test:secrets": "node --test scripts/check-secrets.test.mjs",
+    "check:test-db": "node scripts/test-db.mjs --check-only",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "format": "prettier --write ."
   },
   "devDependencies": {
+    "@playwright/test": "1.62.1",
     "prettier": "^3.6.2",
     "turbo": "^2.5.6"
   }

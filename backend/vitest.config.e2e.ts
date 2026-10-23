@@ -1,11 +1,26 @@
 import { defineConfig } from 'vitest/config';
-import tsconfigPaths from 'vite-tsconfig-paths';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
 
 export default defineConfig({
-  plugins: [tsconfigPaths()],
+  resolve: {
+    alias: {
+      '@': import.meta.dirname,
+      'next/server': require.resolve('next/server.js'),
+    },
+  },
   test: {
     globals: true,
-    root: './',
-    include: ['**/*.e2e-spec.ts'],
+    root: import.meta.dirname,
+    include: ['server/**/*.e2e-spec.ts'],
+    env: {
+      DATABASE_URL: '',
+      R2_ACCOUNT_ID: '',
+      RESEND_API_KEY: '',
+      EMAIL_FROM: '',
+      INITIAL_ADMIN_USERNAME: '',
+      INITIAL_ADMIN_PASSWORD_HASH: '',
+    },
   },
 });

@@ -15,3 +15,20 @@ coverage/
 .DS_Store
 Thumbs.db
 *.log
+.tmp-vitest/
+.e2e/
+.next-e2e/
+.next-build-check/
+test-results/
+playwright-report/
+output/pdf/
+output/screenshots/
+
+# Local credential files; version only the blank .env.example templates.
+*.pem
+*.key
+*.p12
+*.pfx
+.envrc
+credentials*.json
+service-account*.json

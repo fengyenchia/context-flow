@@ -1,6 +1,6 @@
 # Inngest 背景工作
 
-大型檔案解析、chunking、embedding 與重試不能放在 Vercel 短生命週期 request 內。API 只負責驗證與排程，Inngest 執行耐久工作。
+（暫緩）大型檔案解析、chunking、embedding 與重試目前不在產品範圍內。本文件保留為未來若重新啟動文件索引需求時的架構備忘，不代表目前需要設定 Inngest。
 
 ## 本機
 
@@ -23,4 +23,4 @@ INNGEST_EVENT_KEY=
 INNGEST_SIGNING_KEY=
 ```
 
-目前 `document-indexing-placeholder` 只驗證 event。下一階段應拆成：確認 document → 從 R2 讀取 → 解析 → chunk → 使用該文件擁有者的 Gemini credential embedding → 寫入索引 → 更新狀態。每一步要可重試且以 document id 做冪等。
+目前 `document-indexing-placeholder` 只驗證 event；文件解析、chunk、Embedding、索引與重試流程均暫不實作。

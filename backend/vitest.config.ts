@@ -1,13 +1,10 @@
 import { defineConfig } from 'vitest/config';
-import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
-  // Resolves the path aliases declared in tsconfig.json, including the ones
-  // added by `nest g library`.
-  plugins: [tsconfigPaths()],
   test: {
     globals: true,
-    root: './',
-    include: ['**/*.spec.ts'],
+    root: import.meta.dirname,
+    include: ['server/**/*.spec.ts'],
+    env: { DATABASE_URL: '', INITIAL_ADMIN_USERNAME: '', INITIAL_ADMIN_PASSWORD_HASH: '' },
   },
 });

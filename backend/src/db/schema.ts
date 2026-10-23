@@ -50,6 +50,15 @@ export const passwordResetTokens = pgTable('password_reset_tokens', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const emailVerificationTokens = pgTable('email_verification_tokens', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  tokenHash: varchar('token_hash', { length: 64 }).notNull().unique(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  consumedAt: timestamp('consumed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const aiCredentials = pgTable('user_ai_credentials', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -172,14 +181,6 @@ export const canvasMessages = pgTable('canvas_messages', {
 export const canvasSummaries = pgTable('canvas_summaries', {
   projectId: uuid('project_id').primaryKey().references(() => projects.id, { onDelete: 'cascade' }),
   content: text('content').notNull().default(''),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
-
-// Transitional aggregate used by the Next API while individual repositories
-// are being split out. It keeps the existing API state durable in Neon.
-export const appState = pgTable('app_state', {
-  id: varchar('id', { length: 50 }).primaryKey(),
-  payload: jsonb('payload').notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

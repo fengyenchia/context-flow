@@ -18,8 +18,9 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 USER_API_KEY_ENCRYPTION_KEY=產生的值
 USER_API_KEY_ENCRYPTION_KEY_VERSION=1
 GEMINI_MODEL=gemini-3.6-flash
-GEMINI_EMBEDDING_MODEL=gemini-embedding-2
-GEMINI_EMBEDDING_DIMENSIONS=768
+# RAG/Embedding 暫不開發；以下變數目前不需要設定，僅保留作未來規格參考。
+# GEMINI_EMBEDDING_MODEL=gemini-embedding-2
+# GEMINI_EMBEDDING_DIMENSIONS=768
 ```
 
 ## 使用者操作
