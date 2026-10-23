@@ -21,8 +21,7 @@ Thumbs.db
 .next-build-check/
 test-results/
 playwright-report/
-output/pdf/
-output/screenshots/
+output/
 
 # Local credential files; version only the blank .env.example templates.
 *.pem

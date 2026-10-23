@@ -1,5 +1,7 @@
 # Cloudflare R2 檔案保存
 
+目前正式來源 CORS 已由使用者修改，並回報上傳、重載與下載成功。以下為重建／排錯參考，不需重建既有 bucket 或金鑰。
+
 ## 平台設定
 
 在 Cloudflare Dashboard → R2 建立私人 bucket，建立只限該 bucket 的 Object Read & Write token。將值放入 backend/.env.local 或 Vercel Backend：
@@ -12,6 +14,8 @@ R2_SECRET_ACCESS_KEY=
 ```
 
 Bucket CORS 範例（將正式網域換成你的前端）：
+
+正式站曾出現 localhost 預檢 204、正式 origin 403；`AllowedOrigins` 必須包含 `https://context-flow.fengyenchia.com`，不加路徑或結尾 `/`。來源列表保留仍需使用的環境，不用公開 bucket。若 API 預簽成功、R2 PUT `Failed to fetch`，先核對 CORS 與預檢，再查憑證／網路，不重複盲目上傳。
 
 ```json
 [{

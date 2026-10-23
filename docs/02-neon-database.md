@@ -1,85 +1,42 @@
-# Neon PostgreSQL 設定
+# Neon 與持久化
 
-## 目前實作狀態
+## 目前狀態
 
-`backend/src/db/schema.ts` 與 `backend/drizzle/` migration 定義帳號、refresh session、AI credential、workspace membership、project、document、Email 驗證/密碼重設 token 與完整畫布資料。`backend/src/db/client.ts` 建立 Neon HTTP client；應用程式不再使用 app_state fallback。
+Drizzle schema 位於 `backend/src/db/schema.ts`；migration 與 snapshots 位於 `backend/drizzle/`，Neon HTTP client 位於 `backend/src/db/client.ts`。使用者、工作區、成員、專案、檔案紀錄、session、AI credential、token 與畫布均寫入正規化資料表，不再讀寫 `app_state`。
 
-> [!WARNING]
-> Next.js API 透過 Drizzle 將使用者、工作區、成員、專案、邀請、session、API Key、重設 token 與完整畫布資料寫入 Neon 正規化資料表。
+寫入只保存請求變更，在 Neon batch 交易中完成；畫布使用 revision／鎖檢查，失敗回報 503 或 409，不顯示假成功。
 
-## 建立 Neon 專案
+## 正式庫安全邊界
 
-1. 登入 Neon Console，建立 PostgreSQL project。
-2. 建立 production branch；需要預覽環境時再建立 preview branch。
-3. 從 Connect 畫面複製兩組 connection string：
-   - Pooled：給 Vercel/serverless 執行時使用。
-   - Direct：給 Drizzle migration 使用（Neon 官方建議 migration 使用 direct connection）。
-4. 本機先放到 `backend/.env.local`：
+> [!IMPORTANT]
+> 目前 production 已於 2026-10-23 套用到 0004。保持原本 `DATABASE_URL`，不要切成備份／測試分支，不要為重新部署重跑歷史 migration。
 
-```dotenv
-DATABASE_URL=postgresql://USER:PASSWORD@HOST/DATABASE?sslmode=require
+既有 production 的 0003 ledger hash 與本機封存版不同；當時舊 `app_state` 及封存表已不存在。這是既有歷史狀態，不改 ledger、不重跑 0003，也不宣稱本機 SQL 能還原已刪除資料。
+
+目前版本的 0003 在尚未套用的環境會將舊表改名 `app_state_legacy_backup`；0004 新增 `email_verification_tokens`。應用程式不使用封存表，不應為清理文件而刪除 migration 或 snapshots。
+
+## 全新環境
+
+只有新環境才依序完成以下操作：
+
+1. 建立 Neon project／用途明確的 branch，備妥備份與還原方式。
+2. 將該環境連線安全設定於 backend；不放 frontend、不以 `NEXT_PUBLIC_` 命名。
+3. 確認連線目標後，從根目錄執行 `pnpm --filter @context-flow/backend db:migrate`。
+4. 檢查 schema 與 ledger，再啟動 API 驗證保存／重載。不要把新環境步驟套用到已完成 migration 的正式庫。
+
+如要改 schema，執行 `pnpm --filter @context-flow/backend db:generate`，先 review 新 SQL，備份後才規劃遷移。不要修改已套用 migration 來代替新增 migration。
+
+## 專用測試分支
+
+在 `backend/.env.test.local` 只設定 `TEST_DATABASE_URL`；原本 production `DATABASE_URL` 不變。測試分支必須獨立、可丟棄：
+
+```sh
+pnpm check:test-db
+pnpm test:db
 ```
 
-本機執行 migration 時，`DATABASE_URL` 暫時改成 Direct connection；正式 Vercel Backend 則使用 Pooled connection。兩者都必須是同一個 Neon branch/database。
+前者只做離線隔離檢查；後者只在測試子程序把測試連線作為 DB，會遷移測試 schema 並測跨程序還原、過期寫入拒絕與原子回滾。入口拒絕相同目標、已知 pooled／非 pooled 別名及危險參數，但仍須人工確認 branch 用途。
 
-不要把連線字串加到 frontend，也不要以 `NEXT_PUBLIC_` 命名。
+使用者已提供測試通過結果。詳細範圍見 [測試指南](10-e2e-testing.md) 與 [驗收報告](12-acceptance-report.md)。
 
-## 執行 migration
-
-PowerShell 臨時設定變數後執行：
-
-```powershell
-$env:DATABASE_URL = "你的 Neon direct connection string"
-pnpm --filter @context-flow/backend db:migrate
-Remove-Item Env:DATABASE_URL
-```
-
-需要修改 schema 時：
-
-```powershell
-pnpm --filter @context-flow/backend db:generate
-```
-
-先檢查新產生的 SQL，再對資料庫執行 migration。
-
-## Vercel 正式環境
-
-在 Vercel Backend Project 的 **Settings → Environment Variables** 新增：
-
-```dotenv
-DATA_MODE=neon
-DATABASE_URL=你的 Neon pooled connection string
-```
-
-同時保留 JWT secrets、`USER_API_KEY_ENCRYPTION_KEY`、`FRONTEND_URL`、`PUBLIC_APP_URL`、Resend 與其他服務設定。儲存後重新部署 backend。
-
-## 驗證資料庫連線
-
-1. 在 Neon SQL Editor 執行：
-
-```sql
-select now();
-```
-
-2. 執行 migration 後確認 `drizzle.__drizzle_migrations` 與應用程式需要的資料表已建立。
-3. 開啟 `https://api.context-flow.fengyenchia.com/api/health`。
-4. 註冊一個測試帳號，重新啟動 backend 後再登入，確認資料不是只存在記憶體。
-
-> Next.js API 已完成目前流程的 Neon 持久化；請先執行 migration，再啟動 backend。
-
-目前必須遷移到 0004。0003 在未執行的環境會將舊 app_state 封存為 app_state_legacy_backup，不會直接刪除資料；核對後再自行清理。0004 新增 email_verification_tokens，避免重啟後驗證信失效。
-
-寫入只包含請求變更，並使用單一 Neon batch 交易；畫布更新另外檢查 revision 與交易鎖。失敗回報 503/409，不會吞掉錯誤後顯示已保存。
-
-可在專用測試分支執行 pnpm test:db，步驟見 [上線前操作清單](11-release-checklist.md)。不要使用正式資料庫作為測試分支。
-
-## Repository 接線驗收條件
-
-正式切換 `DATA_MODE=neon` 前必須確認：
-
-- 註冊使用 transaction 同時新增 user、personal workspace、owner membership。
-- 登入與 refresh token 在不同 Vercel instance 仍可使用。
-- 邀請、角色、專案與 API Key 在冷啟動後仍存在。
-- 修改角色或密碼時 `token_version` 與 sessions 一起失效。
-- 最後一位系統管理員、最後一位 workspace owner 的限制在 transaction 內成立。
-- 測試涵蓋併發邀請、重複 username 與 refresh token rotation。
+`/api/health` 的 `neon: true` 只表示有設定連線，不等於已成功讀寫資料庫。不要將 SQL 查詢結果、帳號資料或連線字串貼進公開文件。

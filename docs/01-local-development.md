@@ -1,96 +1,59 @@
-# 本機安裝與專案開啟流程
+# 本機開發
 
-## 1. 確認工具
+## 工具與安裝
+
+使用 Node.js 24.x、pnpm 11.19.0，在 repository 根目錄執行：
 
 ```powershell
 node --version
 pnpm --version
+pnpm install --frozen-lockfile
+if (!(Test-Path backend/.env.local)) { Copy-Item backend/.env.example backend/.env.local }
+if (!(Test-Path frontend/.env.local)) { Copy-Item frontend/.env.example frontend/.env.local }
 ```
 
-建議 Node.js 24 以上、pnpm 11 以上。若電腦尚未安裝 pnpm，可在已有 Node.js 的情況下執行 `corepack enable` 與 `corepack prepare pnpm@11.19.0 --activate`。
+不覆寫現有環境檔，不混用 npm 與 pnpm。套件管理器版本由 package.json 釘選。
 
-## 2. 安裝依賴
+## 模式與環境變數
 
-在 `C:\webProjects\context-flow` 執行：
+前端 `NEXT_PUBLIC_API_BASE_URL=http://localhost:3001/api`；後端 `FRONTEND_URL` 與 `PUBLIC_APP_URL` 使用 `http://localhost:3000`。不要混用 localhost 和 127.0.0.1。
 
-```powershell
-pnpm install
-```
+- 未設定 `DATABASE_URL`：使用記憶體，重啟後資料清空。
+- 有設定 `DATABASE_URL`：使用該 Neon 連線；`DATA_MODE=memory` 不是覆蓋連線的隔離開關。
+- 既有本機檔若連到 production，不為了測試改動它；用 [隔離測試入口](10-e2e-testing.md) 或另建環境。
+- 未設定 Resend 時，開發模式把驗證／重設連結印在 backend console；註冊仍須完成驗證。
+- R2 未設定時不能上傳原始檔，文字／連結與一般節點不依賴 R2。
+- AI 需要 base64 32-byte 的 `USER_API_KEY_ENCRYPTION_KEY`；已有資料時沿用原值，使用者 Key 在介面設定，見 [Gemini](04-gemini-api-key.md)。
 
-這是 pnpm workspace；不要分別在 `frontend`、`backend` 使用 npm 安裝。
+完整名稱見 `backend/.env.example`、`frontend/.env.example`；不要把示範檔當作真實密鑰來源。
 
-## 3. 建立環境檔
-
-```powershell
-Copy-Item backend\.env.example backend\.env.local
-Copy-Item frontend\.env.example frontend\.env.local
-```
-
-本機先保留：
-
-```dotenv
-# backend/.env.local
-FRONTEND_URL=http://localhost:3000
-PUBLIC_APP_URL=http://localhost:3000
-DATA_MODE=memory
-
-# frontend/.env.local
-NEXT_PUBLIC_API_BASE_URL=http://localhost:3001/api
-```
-
-Memory mode 不需要資料庫；每次重開 backend，帳號與專案資料都會清空。
-
-註冊驗證與忘記密碼信件使用 Resend。未填 `RESEND_API_KEY`、`EMAIL_FROM` 時，開發環境會把驗證／重設連結記錄在 backend console，不會真的寄信；要寄出信件時，請填入 Resend API Key 與已驗證寄件網域。
-
-若要測 AI Key 儲存，產生 32-byte AES key：
-
-```powershell
-node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-```
-
-把輸出放到 `backend/.env.local` 的 `USER_API_KEY_ENCRYPTION_KEY=` 後面。
-
-## 4. 啟動
+## 啟動與操作
 
 ```powershell
 pnpm dev
 ```
 
-終端機會同時顯示 frontend（3000）與 Next.js backend（3001）log。瀏覽器開啟 <http://localhost:3000>，點「建立帳號」即可註冊；註冊需要 Email，驗證信會由 Resend 寄出（未設定 Resend 時只記錄開發連結）。
+前端 [localhost:3000](http://localhost:3000)，API [健康檢查](http://localhost:3001/api/health)。
 
-## 5. 第一次操作建議
+1. 註冊、完成 Email 驗證並登入。
+2. 在個人工作區新增專案；共享工作區另邀請已註冊帳號，對方接受後加入。
+3. 資料池加入文字、連結或檔案；按「建立資料架構」產生節點。
+4. 畫布為資料池加上資料架構區、發散思考區、收斂總結區；各區可收合，窄螢幕改直向。
+5. 雙擊節點修改內容與底色，雙擊連線修改文字。儲存後重載確認。
+6. 設定 AI Key 後可對話轉節點、依發散內容「整理成結論」。
+7. 展開三區再匯出 PNG／PDF；PNG 為分片 ZIP。檔案已接 R2 上傳／下載，但不解析 PDF、不做 RAG。
 
-1. 建立一般帳號並登入。
-2. 在自動建立的個人工作區新增專案。
-3. 建立共享工作區。
-4. 再註冊第二個帳號；回到第一個帳號，用第二個帳號的 username 發邀請。
-5. 到「AI Key」設定 Gemini API Key。
-6. 到「密碼與安全性」按「寄送 Email 驗證連結」即可透過 Email 重設密碼。
-7. 進入專案畫布，在「資料池」加入文字、連結、圖片或檔案；按「整理成 Data Zone」建立來源可追溯的核心架構節點。
-
-## 專案畫布操作
-
-寬螢幕時畫布是三個橫向工作區：資料池、Data Zone、洞察區；窄螢幕時會改為直向堆疊。每一區標題列的收合按鈕都能單獨收起，讓其餘區域取得更多視野。
-
-- 文字與連結會直接送入 Data Zone 的 Gemini 整理請求。
-- 圖片與檔案現階段會保留名稱與可讀摘要；實際上傳、R2 儲存及大型檔案解析屬於後續 Inngest 背景工作管線。
-- Data Zone 使用該登入使用者的 BYOK Gemini Key，未設定 Key 時會提示先到「AI Key」設定。
-
-## 6. 檢查
+## 檢查與疑難排解
 
 ```powershell
+pnpm check:env
 pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
 ```
 
-API 健康狀態是 <http://localhost:3001/api/health>。
-
-## 常見問題
-
-- 前端顯示無法連線：確認 backend 在 3001 port，且 `NEXT_PUBLIC_API_BASE_URL=http://localhost:3001/api`。
-- 表單顯示「尚未登入」：檢查 `frontend/.env.local` 是否誤設為 `/api/v1`；此專案 API base 必須是 `http://localhost:3001/api`。改完後重啟 `pnpm dev`。
-- Cookie 沒有送出：本機前後端都應使用 `http://localhost`；不要混用 `127.0.0.1`。
-- AI Key 儲存失敗：確認 AES key 是 base64 編碼的完整 32 bytes，且 Gemini Key 可用。
-- 重開後資料消失：這是 `DATA_MODE=memory` 的預期行為。
+- 連不到 API：確認 backend 在 3001、base URL 結尾為 `/api`，不是 `/api/v1`；修改公開變數後重啟 frontend。
+- 註冊後不能登入：先打開 Email 或開發終端機的驗證連結。
+- 檔案上傳失敗：確認是 API 或 R2 PUT 失敗，檢查 [R2 CORS](03-cloudflare-r2.md)，不要分享預簽網址。
+- Neon、瀏覽器測試與測試產物位置見 [測試指南](10-e2e-testing.md)。

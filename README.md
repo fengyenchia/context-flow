@@ -1,80 +1,122 @@
+<img src="./frontend/public/brand/context-flow-logo.png" alt="ContextFlow logo" width="64" height="64">
+
 # ContextFlow
 
-ContextFlow 是一個以「專案脈絡」為中心的團隊共享工作台。使用者可以管理多個個人或共享工作區，在視覺化畫布整理問題、參考資料與決策，並使用自己的 Gemini API Key 取得 AI 協助。
+以節點畫布整理專案資料、討論與決策的工作台。支援個人／共享工作區，使用者可用自己的 Gemini API Key 協助整理資料、發散與收斂。
 
-## 目前功能
+[正式網站](https://context-flow.fengyenchia.com) · [文件索引](docs/README.md) · [部署](docs/08-vercel-deployment.md) · [驗收結果](docs/12-acceptance-report.md)
 
-- 帳號註冊、登入、Access/Refresh JWT 輪替與 HttpOnly Cookie
-- 個人工作區與共享工作區、成員邀請及角色權限
-- 多專案管理與 React Flow 思考畫布
-- 使用者自行加密儲存 Gemini API Key
-- 帳號資料、密碼變更與管理員帳號管理
-- 管理員發行 30 分鐘一次性密碼重設碼
-- Cloudflare R2 預簽上傳、檔案確認與授權下載；Liveblocks 即時同步尚未接入
-- Neon/Drizzle schema 與初始 migration
+## 功能與範圍
 
-## 技術架構
+| 功能 | 目前提供 |
+| --- | --- |
+| 帳號 | 註冊、Email 驗證／重寄、登入登出、密碼重設與帳號管理 |
+| 工作區與專案 | 個人／共享工作區、成員邀請、角色權限、專案新增／更名／刪除 |
+| 畫布 | 資料池、資料架構區、發散思考區、收斂總結區；節點編輯、分色、拖曳、連線與連線文字 |
+| AI | 使用者自行設定 Gemini Key；對話轉節點、資料架構生成、依發散內容收斂 |
+| 保存 | Neon 正規化資料表、自動儲存、離線失敗重試、版本衝突拒絕 |
+| 檔案 | R2 私人 bucket、20 MB 以內非空檔案、預簽上傳、完成確認與授權下載 |
+| 匯出 | PDF 分頁；PNG 依資料池與三區分片，包成 ZIP；保留節點底色與連線 |
+
+共享工作區不是即時多人共編：目前以版本檢查保護輪流編輯，不自動合併衝突。檔案保存不等於 PDF 解析或 RAG。RAG、群組與 Markdown／JSON／SVG 匯出不在目前版本；Liveblocks、Inngest 索引、版本歷史、復原／重做等未實作內容不列為已完成功能。
+
+## 技術與目錄
+
+Node.js 24.x、pnpm 11.19.0 workspace；前後端皆為 Next.js 16／TypeScript。前端使用 React Flow、Tailwind CSS、Tabler Icons；後端使用 Drizzle／Neon、JWT、scrypt、AES-256-GCM、Resend、R2 與 Gemini SDK。
 
 ```text
-context-flow/
-├─ frontend/   Next.js 16 UI（port 3000）、Tailwind CSS、React Flow
-├─ backend/    Next.js 16 Route Handlers API（port 3001）、JWT、Drizzle、R2、Inngest
-├─ docs/       本機設定與各雲端服務操作指南
-└─ IDEA.md     產品與技術規格
+frontend/src/        頁面、UI、畫布與 API client（開發埠 3000）
+frontend/public/     實際使用的品牌圖片
+backend/app/api/    Next.js Route Handlers（開發埠 3001）
+backend/server/     驗證、權限、持久化、檔案與服務邏輯
+backend/src/db/     Drizzle schema 與 Neon client
+backend/drizzle/    migration、journal 與 schema snapshots
+e2e/               Playwright 瀏覽器測試
+scripts/           測試入口、環境／密鑰／資料庫隔離檢查
+docs/              現行設定、部署、防護與驗收文件
 ```
 
-## 快速啟動
+## 本機啟動
 
-需求：Node.js 24+、pnpm 11+。
+先安裝 Node.js 24.x 與 pnpm 11.19.0。在 repository 根目錄執行，不要混用 npm 或分開安裝兩個 package。
 
-```bash
-pnpm install
-Copy-Item backend\.env.example backend\.env.local
-Copy-Item frontend\.env.example frontend\.env.local
+```powershell
+pnpm install --frozen-lockfile
+if (!(Test-Path backend/.env.local)) { Copy-Item backend/.env.example backend/.env.local }
+if (!(Test-Path frontend/.env.local)) { Copy-Item frontend/.env.example frontend/.env.local }
 pnpm dev
 ```
 
-開啟：
-
-- 前端：<http://localhost:3000>
-- API：<http://localhost:3001/api>
-- Health check：<http://localhost:3001/api/health>
-
-開發環境預設使用 `DATA_MODE=memory`，註冊後即可測試完整帳號與工作區流程；重新啟動後資料會清空。完整環境變數與密鑰產生方式請依照 [本機開發指南](docs/01-local-development.md) 操作。
+開啟 [本機前端](http://localhost:3000)；API 為 `http://localhost:3001/api`，健康檢查為 `/api/health`。本機前後端統一使用 localhost，不混用 127.0.0.1。
 
 > [!IMPORTANT]
-> Next.js API 透過 Drizzle 將帳號、工作區、專案與畫布持久化到 Neon 正規化資料表，不再讀寫 `app_state`；請在部署環境設定 `DATABASE_URL` 與 `DATA_MODE=neon`。目前 production migration 已到 0004，不為部署重跑舊 migration。完整環境變數請依照 [Neon 指南](docs/02-neon-database.md) 操作。
+> 未設定 `DATABASE_URL` 才是記憶體模式，重啟後資料清空；只填 `DATA_MODE=memory` 不會覆蓋已存在的資料庫連線。既有環境檔不可直接覆寫，也不要為了本機測試更動原本 production 連線。需要完全隔離的流程時使用測試入口，見 [測試指南](docs/10-e2e-testing.md)。
 
-## 文件索引
+開發環境未設定 Resend 時，驗證／重設連結會出現在 backend 終端機；註冊仍需完成 Email 驗證才能登入。正式環境不使用終端機寄信 fallback。
 
-0. [功能盤點與開發狀態](docs/09-product-status.md)
-1. [本機安裝與專案開啟流程](docs/01-local-development.md)
-2. [Neon PostgreSQL 與 migration](docs/02-neon-database.md)
-3. [Cloudflare R2](docs/03-cloudflare-r2.md)
-4. [Gemini BYOK](docs/04-gemini-api-key.md)
-5. [Liveblocks 多人共編](docs/05-liveblocks.md)
-6. [Inngest 背景工作](docs/06-inngest.md)
-7. [JWT、管理員與密碼重設](docs/07-jwt-and-admin.md)
-8. [Vercel 部署](docs/08-vercel-deployment.md)
-9. [E2E 自動化驗證](docs/10-e2e-testing.md)
-10. [上線前操作與瀏覽器驗收](docs/11-release-checklist.md)
+## 環境設定
 
-## 常用指令
+| 檔案／變數 | 用途 |
+| --- | --- |
+| `frontend/.env.local` → `NEXT_PUBLIC_API_BASE_URL` | 本機為 `http://localhost:3001/api`；正式值只填 Vercel Frontend |
+| `backend/.env.local` → `FRONTEND_URL`、`PUBLIC_APP_URL` | 本機前端來源及郵件連結；正式使用同站 HTTPS 網域 |
+| `DATABASE_URL` | Neon 持久化；保持既有 production 連線 |
+| `JWT_ACCESS_SECRET`、`JWT_REFRESH_SECRET` | 不同的登入簽署密鑰 |
+| `USER_API_KEY_ENCRYPTION_KEY` | base64 編碼的 32-byte AES key；已有資料時不可直接更換 |
+| `RESEND_API_KEY`、`EMAIL_FROM` | 註冊驗證與密碼重設郵件 |
+| `R2_ACCOUNT_ID`、`R2_BUCKET_NAME`、`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY` | 檔案保存；bucket CORS 必須允許實際前端來源 |
+| `GEMINI_MODEL` | 沿用帳號可用的模型；未設定時程式預設 `gemini-2.5-flash` |
+| `backend/.env.test.local` → `TEST_DATABASE_URL` | 獨立、可丟棄的 Neon 測試分支；不填 Vercel |
 
-```bash
-pnpm dev          # 同時啟動 frontend 與 backend
-pnpm dev:inngest  # 啟動 Inngest 本機開發介面
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm test:e2e:api # API 整合流程（隔離記憶體資料）
-pnpm test:e2e     # Chromium 登入、工作區、專案、畫布流程
-pnpm test:db      # 只使用 TEST_DATABASE_URL 的專用測試分支
-pnpm check:env    # 檢查本機環境變數完整性，不印出密鑰
-pnpm check:secrets -- --staged --history # 檢查暫存區與本機可見 Git 歷史，不印出密鑰
-pnpm test:secrets # 密鑰掃描工具的隔離測試
-pnpm build
-pnpm check        # 依序執行全部檢查
-```
+Gemini Key 由使用者登入後在「AI Key」設定，不設共用的前端密鑰。完整步驟見 [本機開發](docs/01-local-development.md)、[JWT／管理員](docs/07-jwt-and-admin.md)、[Gemini](docs/04-gemini-api-key.md)、[R2](docs/03-cloudflare-r2.md)。
 
-所有雲端密鑰只放在 `.env` 或 Vercel Environment Variables；不要提交到 Git。`NEXT_PUBLIC_` 變數會進入瀏覽器 bundle，只能放可公開的值。
+## 第一次使用
+
+1. 註冊並從 Email 或開發終端機連結完成驗證，再登入。
+2. 在個人工作區新增專案；需要共享時建立工作區並邀請已註冊帳號。
+3. 資料池加入文字、連結或檔案；設定自己的 AI Key 後建立資料架構。
+4. 雙擊節點編輯標題、內容及底色，雙擊連線編輯關係文字。
+5. 發散思考後按「整理成結論」。收斂以發散節點內容、連線與重要標記為主，AI 語意仍需人工確認。
+6. 修改後等「已儲存」再離開；衝突時先複製未儲存文字，不直接重整丟棄。
+7. 展開三區後匯出 PDF 或 PNG。PNG 下載是 ZIP，PDF 以 A4 橫式分頁。
+
+## 測試與檢查
+
+| 指令 | 範圍 |
+| --- | --- |
+| `pnpm lint`、`pnpm typecheck` | 靜態檢查 |
+| `pnpm test` | 前後端單元測試 |
+| `pnpm test:e2e:api` | API 流程；記憶體與服務替身 |
+| `pnpm exec playwright install chromium` | 首次安裝測試瀏覽器 |
+| `pnpm test:e2e` | 隔離的 3100／3101 瀏覽器流程 |
+| `pnpm check:test-db` | 離線檢查測試庫與正式庫隔離，不連線 |
+| `pnpm test:db` | 只在專用測試分支執行 migration、跨程序還原／衝突／回滾測試 |
+| `pnpm check:env` | 不輸出密鑰的本機設定檢查 |
+| `pnpm test:secrets` | 密鑰掃描器隔離測試 |
+| `pnpm check:secrets -- --staged --history` | 檢查暫存區與本機可見 Git 歷史 |
+| `pnpm build` | 前後端 Webpack 正式建置 |
+| `pnpm check` | lint、型別、單元測試、建置；不包含所有 E2E／DB／密鑰測試 |
+
+詳細隔離方式、結果與已知警告見 [測試指南](docs/10-e2e-testing.md) 與 [驗收報告](docs/12-acceptance-report.md)。測試輸出、環境檔與套件不進 Git。密鑰掃描不保證識別所有格式，仍需人工檢查差異。
+
+## 部署與防護
+
+同一 repository 建立兩個 Vercel Project，Root Directory 分別為 `frontend` 與 `backend`，Node 24.x、pnpm 11.19.0、Build Command `pnpm build`。正式網址：
+
+- 前端：`https://context-flow.fengyenchia.com`
+- API：`https://api.context-flow.fengyenchia.com/api`
+
+兩端使用同站 HTTPS 網域以配合 refresh cookie 的 `SameSite=Lax`。正式密鑰只放 Backend Production，不複製到 Preview 或 `NEXT_PUBLIC_*`。目前 production 已到 migration 0004，不因重新部署重跑舊 migration。
+
+使用者已回報正式站核心流程、共享權限、雙分頁衝突、離線重試、檔案、AI、匯出及郵件／密碼重設通過；平台防護與維運設定仍須獨立確認。見 [部署](docs/08-vercel-deployment.md)、[Backend 防護](docs/15-backend-security.md)、[剩餘清單](docs/11-release-checklist.md)。
+
+## 常見問題與限制
+
+- 上傳 `Failed to fetch`：確認失敗的是 API 還是 R2 PUT；bucket CORS 的 AllowedOrigins 需包含正式前端的完整 origin，不加路徑或結尾斜線。不要公開 bucket 來解決 CORS。
+- 重整後登出：檢查前後端網址、HTTPS、cookie、精確 CORS 來源與部署保護。
+- `/api/health` 正常：只代表服務與設定存在，不代表已實際測過資料庫、檔案或寄信。
+- 刪除專案：資料庫檔案紀錄會移除，R2 原始物件不會自動清空；清理前須另核對引用。
+- 舊圖片只保存失效 `blob:` 網址時，需重新上傳原圖，無法還原已遺失的圖片內容。
+- 現有登入限流為每個程序的記憶體計數；公開站另需平台層防護，不等同全球唯一計數器。
+
+其他文件由 [docs/README.md](docs/README.md) 分流。

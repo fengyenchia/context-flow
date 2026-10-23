@@ -2,6 +2,8 @@
 
 更新：2026-10-24。請先完成本機 Git 安全檢查與提交，再由你在瀏覽器建立 Vercel Project。尚未 push／部署不代表線上版本已更新。
 
+目前使用者已完成前後端 Ready、正式網域及核心功能驗收；以下保留作新環境／重部署參考，不要求重建已有 Project。最新狀態見 [驗收結果](12-acceptance-report.md)，接下來的平台設定見 [Backend 防護](15-backend-security.md)。
+
 ## 先準備 Git（本機）
 
 ```sh
@@ -76,7 +78,9 @@ NEXT_PUBLIC_API_BASE_URL=https://api.context-flow.fengyenchia.com/api
 
 Backend production 至少需要 JWT secrets、`DATABASE_URL`、API Key encryption key 與寄信設定；檔案功能另需 R2。Liveblocks 與 Inngest 不屬於目前必要設定。
 
-Backend 需填的變數名稱（值從本機安全複製，沿用已有加密 key 才能解密既有 Gemini Key）：`DATABASE_URL`、`JWT_ACCESS_SECRET`、`JWT_REFRESH_SECRET`、`USER_API_KEY_ENCRYPTION_KEY`、`RESEND_API_KEY`、`EMAIL_FROM`、`R2_ACCOUNT_ID`、`R2_BUCKET_NAME`、`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`、`FRONTEND_URL`、`PUBLIC_APP_URL`、`GEMINI_MODEL`（沿用目前值）、`DATA_MODE=neon`、`ENABLE_EXPERIMENTAL_COREPACK=1`。`NODE_ENV` 由 Vercel 正式 build/runtime 提供即可，不必手動覆寫。已有管理員帳號時不需要再填 `INITIAL_ADMIN_*`。
+Backend 需填的變數名稱（值從本機安全複製，沿用已有加密 key 才能解密既有 Gemini Key）：`DATABASE_URL`、`JWT_ACCESS_SECRET`、`JWT_REFRESH_SECRET`、`USER_API_KEY_ENCRYPTION_KEY`、`RESEND_API_KEY`、`EMAIL_FROM`、`R2_ACCOUNT_ID`、`R2_BUCKET_NAME`、`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`、`FRONTEND_URL`、`PUBLIC_APP_URL`、`GEMINI_MODEL`（沿用目前值）、`DATA_MODE=neon`、`ENABLE_EXPERIMENTAL_COREPACK=1`。`NODE_ENV` 由 Vercel 正式 build/runtime 提供即可，不必手動覆寫。
+
+既有環境已完成管理員設定時，應移除 Backend 各適用環境中的 `INITIAL_ADMIN_USERNAME`、`INITIAL_ADMIN_PASSWORD_HASH`，再重新部署 Backend；不要改填現有管理員帳號。管理權限已存在資料庫，移除這兩項不會取消權限。本機環境檔的清理不會同步修改 Vercel。
 
 Frontend 只填 `NEXT_PUBLIC_API_BASE_URL` 和 `ENABLE_EXPERIMENTAL_COREPACK=1`；不要填資料庫、JWT、R2、Resend 或使用者 Gemini secrets。
 

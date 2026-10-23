@@ -1,5 +1,7 @@
 # 自動化驗證
 
+目前最新的正式站人工回報集中在 [驗收結果](12-acceptance-report.md)。下列測試仍使用其各自隔離設定，不會因正式站驗收完成而改連 production。
+
 ## 指令
 
 ```sh
@@ -10,6 +12,8 @@ pnpm test:e2e:api
 pnpm test:e2e
 pnpm test:db # 需先設定專用測試分支的 TEST_DATABASE_URL
 pnpm check:test-db # 離線檢查隔離，不會連線或執行 migration
+pnpm test:secrets
+pnpm check:secrets -- --staged --history
 ```
 
 `pnpm test` 分別執行 backend 與 frontend 的單元測試，不會先 build，也不會跨套件掃描測試。前端包含新增節點位置的回歸測試，檢查空畫布、量測高度、多節點碰撞與獨立水平分支。

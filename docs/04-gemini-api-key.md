@@ -1,35 +1,26 @@
-# Gemini BYOK 設定
+# Gemini BYOK
 
-ContextFlow 不使用共用 Gemini Key。每位使用者登入後到「AI Key」頁貼上自己的 Key；backend 驗證後以 AES-256-GCM 加密。
+每位使用者在「AI Key」設定自己的 Gemini API Key。Backend 驗證後用 AES-256-GCM 加密保存，只回傳遮罩提示，不設共用前端 Key。
 
-帳號註冊需要 Email；驗證與忘記密碼使用 server-only 的 Resend 設定（`RESEND_API_KEY`、`EMAIL_FROM`）。
+## 管理者設定
 
-## 系統管理者設定
-
-先產生 base64 32-byte encryption key：
+- `USER_API_KEY_ENCRYPTION_KEY`：base64 編碼的 32-byte key，只放 backend。本機與正式庫使用既有資料時必須沿用原值。
+- `GEMINI_MODEL`：使用目前帳號可用的模型名稱；程式與示範環境檔預設 `gemini-2.5-flash`，不代表其他帳號皆有相同配額或模型權限。
+- 第一次建立空白環境才產生加密 key：
 
 ```powershell
 node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ```
 
-放入 `backend/.env.local` 與 Vercel backend variables：
+目前沒有可自動執行的 key-version 輪替／重加密流程，設定 `USER_API_KEY_ENCRYPTION_KEY_VERSION` 不會啟用此功能。不要直接覆寫現有 key；有輪替需求須另行設計與驗證。
 
-```dotenv
-USER_API_KEY_ENCRYPTION_KEY=產生的值
-USER_API_KEY_ENCRYPTION_KEY_VERSION=1
-GEMINI_MODEL=gemini-3.6-flash
-# RAG/Embedding 暫不開發；以下變數目前不需要設定，僅保留作未來規格參考。
-# GEMINI_EMBEDDING_MODEL=gemini-embedding-2
-# GEMINI_EMBEDDING_DIMENSIONS=768
-```
+## 使用者流程
 
-## 使用者操作
+1. 從 Google AI Studio 取得自己的有效 Key。
+2. 登入 → AI Key → 貼上 →「驗證並儲存」。
+3. Backend 會發出最小 Gemini 測試請求，可能使用配額；成功後只顯示遮罩。
+4. 更換失敗不覆蓋原設定，可在介面刪除 Key。
 
-1. 自行從 Google AI Studio 建立 Gemini API Key。
-2. 登入 ContextFlow → AI Key。
-3. 貼上 Key，按「驗證並儲存」。
-4. 成功後畫面只顯示遮罩提示，永遠不回傳完整 Key。
+資料架構、對話與收斂使用該登入使用者的 Key。收斂主要根據發散節點完整內容、關係與重要標記；資料架構作背景，結果仍需人工核對。不做 RAG、Embedding 或自動文件檢索。
 
-Data Zone 也使用同一把使用者 Key。當資料池中的資料送出後，後端會要求 Gemini 3.6 Flash 回傳 JSON 格式的核心節點、節點關聯與來源 ID；前端才將其顯示在畫布上。這讓每一個 AI 整理結果都能回連到輸入資料，而不是沒有根據的摘要。
-
-更換 server encryption key 時不能直接覆蓋：先保留舊版本解密能力，批次重新加密，再提高 `USER_API_KEY_ENCRYPTION_KEY_VERSION`。金鑰、明文 request 與 AI 回覆不應寫入一般 application log。
+額度、權限、模型與暫時上游故障會安全轉成錯誤訊息；自動測試使用 SDK 替身，不等同真實配額或語意品質驗收。正式站基本生成已由使用者確認。不要記錄完整 Key、私有 prompt、回覆或含憑證的 SDK 診斷。
