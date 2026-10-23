@@ -1,7 +1,3 @@
-declare module '@gsap/react' {
-  export function useGSAP(callback: () => void, options?: { scope?: unknown; dependencies?: unknown[]; revertOnUpdate?: boolean }): void;
-}
-
 declare module 'html-to-image' {
   export function toPng(node: HTMLElement, options?: Record<string, unknown>): Promise<string>;
 }
