@@ -6,7 +6,7 @@ export function tourSteps(stage: TourStage, readOnly: boolean): Step[] {
     { target: '[data-tour="workspaces"]', title: '從工作區開始', content: '個人工作區放自己的專案；需要協作時，再建立共享工作區。這段教學只介紹操作，不會替你新增資料。' },
     { target: '[data-tour="create-project"]', title: '建立第一個專案', content: '教學結束後，按「新增專案」，填寫名稱與描述，再點專案卡片進入畫布。第一次進入畫布時，會接著介紹節點操作。' },
     { target: '[data-tour="create-workspace"]', title: '需要團隊協作時', content: '建立共享工作區後，可邀請已註冊的帳號，設定可編輯或僅檢視權限。個人工作區不能邀請成員。' },
-    { target: '[data-tour-replay="workspace"]', title: '隨時重看教學', content: '之後可按這個按鈕重新看教學。更完整的操作步驟在側欄「使用手冊」。現在可以建立你的第一個專案。' },
+    { target: '[data-tour-replay="workspace"]', title: '隨時重看教學', content: '之後可按這個按鈕重新看教學。完整的使用手冊可從首頁開啟。現在可以建立你的第一個專案。' },
   ];
   return [
     { target: '[data-tour="resources"]', title: '先放入資料', content: readOnly ? '這裡保存專案的文字、連結與原始檔。你目前是僅檢視成員，可以閱讀，但不能修改資料。' : '資料池可加入文字、連結或檔案。檔案需非空且不超過 20 MB；上傳 PDF 不代表 AI 會讀取全文。' },

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  IconBook2 as Book,
   IconRobot as Bot,
   IconKey as KeyRound,
   IconLayoutGrid as LayoutGrid,
@@ -28,7 +27,6 @@ const nav = [
   { href: "/settings/ai", label: "AI Key", icon: Bot },
   { href: "/settings/account", label: "帳號設定", icon: Settings },
   { href: "/settings/security", label: "密碼與安全性", icon: KeyRound },
-  { href: "/guide", label: "使用手冊", icon: Book },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

@@ -44,6 +44,7 @@ async function finish(page: Page, titles: string[]) {
     const dialog = page.getByRole('alertdialog');
     await expect(dialog.getByRole('heading', { name: title, exact: true })).toBeVisible();
     await expect(dialog.locator('[title]')).toHaveCount(0);
+    await expect(dialog.locator('a[href="/guide"]')).toHaveCount(index === titles.length - 1 ? 1 : 0);
     await dialog.getByRole('button', { name: index === titles.length - 1 ? '完成教學' : '下一步', exact: true }).click();
   }
   await expect(page.getByRole('alertdialog')).toHaveCount(0);

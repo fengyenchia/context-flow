@@ -5,7 +5,7 @@
 | 需求 | 文件 |
 | --- | --- |
 | 專案介紹、啟動與常用指令 | [根目錄 README](../README.md) |
-| 一般使用者操作、節點編輯、共享與匯出 | [使用手冊](https://context-flow.fengyenchia.com/guide)（網站 `/guide`，首頁頁尾與工作區側欄皆有入口） |
+| 一般使用者操作、節點編輯、共享與匯出 | [使用手冊](https://context-flow.fengyenchia.com/guide)（網站 `/guide`，從首頁頁尾開啟） |
 | 本機安裝與開發模式 | [01 本機開發](01-local-development.md) |
 | Neon、migration 與測試連線 | [02 Neon](02-neon-database.md) |
 | R2 上傳／下載與 CORS | [03 R2](03-cloudflare-r2.md) |

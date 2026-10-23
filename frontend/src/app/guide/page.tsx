@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BrandLogo } from '@/components/brand-logo';
 import { guideSections } from '@/features/guide/guide-content';
+import { GuideToc } from '@/features/guide/guide-toc';
 import { site, siteMetadata } from '@/lib/site-metadata';
 
 const description = 'ContextFlow 使用手冊：註冊、共享權限、雙擊編輯節點與連線、節點分色、AI、儲存衝突，以及 PDF／PNG 匯出的完整操作步驟。';
@@ -30,12 +31,7 @@ export default function GuidePage() {
         <p className="mt-4 max-w-2xl text-base leading-8">從第一個專案，到節點編輯、共享與匯出。依目錄跳到需要的操作，或用瀏覽器搜尋關鍵字。</p>
         <div className="mt-10 grid items-start gap-10 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-14 print:block">
           <aside className="rounded-primary border border-border bg-surface p-4 lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto print:hidden">
-            <nav aria-label="手冊目錄">
-              <h2 className="mb-2 px-2 font-semibold">目錄</h2>
-              <ol className="grid sm:grid-cols-2 lg:grid-cols-1">
-                {guideSections.map(({ id, title }, index) => <li key={id}><a href={`#${id}`} className={`flex min-h-11 items-center gap-3 px-2 py-2 text-sm leading-6 hover:bg-secondary ${focus}`}><span aria-hidden="true" className="w-5 shrink-0 tabular-nums">{String(index + 1).padStart(2, '0')}</span>{title}</a></li>)}
-              </ol>
-            </nav>
+            <GuideToc sections={guideSections.map(({ id, title }) => ({ id, title }))} />
           </aside>
           <article aria-label="操作說明" className="min-w-0 space-y-14 print:space-y-8">
             {guideSections.map(({ id, title, topics }, index) => (

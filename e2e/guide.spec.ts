@@ -35,7 +35,31 @@ test('manual is public, indexed, and documents the actual editing and export wor
   await toc.getByRole('link', { name: '節點：新增、雙擊編輯與分色' }).click();
   await expect(page.locator('#nodes')).toBeInViewport();
   await expect(page.locator('#nodes')).toBeFocused();
+  await expect(toc.locator('a[aria-current="location"]')).toHaveAttribute('href', '#nodes');
+  await expect(toc.locator('a[aria-current="location"]')).toHaveCSS('background-color', 'rgb(250, 241, 242)');
   expect(errors).toEqual([]);
+});
+
+test('manual directory follows scrolling, deep links, reloads and the final section', async ({ page }, testInfo) => {
+  await page.route('**/api/auth/refresh', route => route.fulfill({ status: 401, json: {} }));
+  await page.addInitScript(() => localStorage.setItem('theme', 'light'));
+  await page.goto('/guide');
+  const current = page.getByRole('navigation', { name: '手冊目錄' }).locator('a[aria-current="location"]');
+  await expect(current).toHaveCount(1);
+  await expect(current).toHaveAttribute('href', '#start');
+  for (const id of ['nodes', 'sharing', 'saving']) {
+    await page.locator(`#${id}`).evaluate(element => window.scrollTo(0, element.getBoundingClientRect().top + window.scrollY + 160));
+    await expect(current).toHaveAttribute('href', `#${id}`);
+    await expect(current).toHaveCSS('background-color', 'rgb(250, 241, 242)');
+  }
+  await page.screenshot({ path: testInfo.outputPath('guide-active-section.png') });
+  await page.goto('/guide#export');
+  await expect(current).toHaveAttribute('href', '#export');
+  await page.reload();
+  await expect(current).toHaveAttribute('href', '#export');
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await expect(current).toHaveAttribute('href', '#troubleshooting');
+  await expect(current).toBeInViewport();
 });
 
 test('manual is readable on small screens, in dark mode, and in print', async ({ page }, testInfo) => {
@@ -75,7 +99,7 @@ test('homepage footer opens the manual', async ({ page }) => {
 });
 
 for (const width of [1440, 375]) {
-  test(`workspace sidebar opens the manual (${width}px)`, async ({ page }) => {
+  test(`workspace sidebar does not include a manual entry (${width}px)`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.route('**/api/**', async route => {
       const headers = {
@@ -98,11 +122,6 @@ for (const width of [1440, 375]) {
     if (width < 1024) await page.getByRole('button', { name: '開啟導覽' }).click();
     else await page.getByRole('button', { name: '收合側欄' }).click();
     const link = page.getByRole('navigation', { name: '應用程式導覽' }).getByRole('link', { name: '使用手冊', exact: true });
-    await expect(link).toBeVisible();
-    await link.click();
-    await expect(page).toHaveURL(/\/guide$/);
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('使用手冊');
-    await page.getByRole('navigation', { name: '手冊導覽' }).getByRole('link', { name: '開啟工作區' }).click();
-    await expect(page).toHaveURL(/\/workspaces$/);
+    await expect(link).toHaveCount(0);
   });
 }
