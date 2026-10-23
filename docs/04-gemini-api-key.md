@@ -12,7 +12,7 @@
 node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ```
 
-目前沒有可自動執行的 key-version 輪替／重加密流程，設定 `USER_API_KEY_ENCRYPTION_KEY_VERSION` 不會啟用此功能。不要直接覆寫現有 key；有輪替需求須另行設計與驗證。
+加密金鑰尚無自動輪替工具；更換前須規劃並驗證既有資料的重加密流程。
 
 ## 使用者流程
 
@@ -23,4 +23,4 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 
 資料架構、對話與收斂使用該登入使用者的 Key。收斂主要根據發散節點完整內容、關係與重要標記；資料架構作背景，結果仍需人工核對。不做 RAG、Embedding 或自動文件檢索。
 
-額度、權限、模型與暫時上游故障會安全轉成錯誤訊息；自動測試使用 SDK 替身，不等同真實配額或語意品質驗收。正式站基本生成已由使用者確認。不要記錄完整 Key、私有 prompt、回覆或含憑證的 SDK 診斷。
+額度、權限、模型與上游故障會轉成錯誤訊息。自動測試使用 SDK 替身，真實配額與生成品質需另行驗收。日誌不得記錄完整 Key、私有 prompt、回覆或含憑證的 SDK 診斷。

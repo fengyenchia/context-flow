@@ -1,6 +1,6 @@
 # Backend 平台防護
 
-更新：2026-10-24。這是待你操作的設定方案，尚未代表 Vercel 規則已啟用。代理不會直接修改平台、發布阻擋或接受費用。
+透過 Vercel Firewall 限制驗證入口流量，搭配應用程式的登入與角色授權。
 
 ## 已有保護與邊界
 
@@ -11,7 +11,7 @@
 ## 瀏覽器設定
 
 1. 開啟 **context-flow-backend → Firewall → Configure → New Rule**。不要在 Frontend 設定這條 API 規則。
-2. 先核對方案與費用；若出現 Pricing、升級或付款提示，先停下確認，不自動接受。
+2. 核對目前方案支援的規則與費用。
 3. 規則名稱可用 `auth-entrypoints`，以下三項以 **AND** 組合：
 
 | 條件 | 值 |
@@ -32,10 +32,10 @@
 使用 Request Path，不是 framework Route 的 `/api/[...path]`。不要把六個路徑各用 AND 接起來；Is any of 等於其中任一匹配。
 
 4. **Then → Rate Limit**，設定 **Fixed Window、60 秒、60 requests、Counting Key = IP**。這是起始建議，不是通用最佳值；六條路徑共享 IP 額度，校園／公司 NAT 要觀察誤傷。
-5. 初期超限動作選 **Log**（只記錄不阻擋）。先核對設定截圖，再由你選 **Save Rule → Review Changes → Publish**。Log 規則也須確認方案與計費。
-6. 觀察正常登入、忘記密碼與驗證流程，再決定將超限動作改成 **Default 429**。保留可快速回到 Log／停用的方式。沒有實際確認前，不能將平台防護標成已完成。
+5. 初期超限動作選 **Log**（只記錄不阻擋），確認設定後選 **Save Rule → Review Changes → Publish**。
+6. 觀察正常登入、忘記密碼與驗證流程，再將超限動作改成 **Default 429**。保留退回 Log 或停用規則的方式。
 
-目前官方列 Hobby 每 project 一條 rate-limit rule，因此可先合併這六個入口；方案與當下平台畫面為準。不要為追求不同門檻直接升級。
+可將六個入口合併為一條規則；可用規則數與計費依平台方案為準。
 
 ## 不要誤封正常流量
 

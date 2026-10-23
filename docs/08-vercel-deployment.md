@@ -1,8 +1,6 @@
 # Vercel 部署
 
-更新：2026-10-24。請先完成本機 Git 安全檢查與提交，再由你在瀏覽器建立 Vercel Project。尚未 push／部署不代表線上版本已更新。
-
-目前使用者已完成前後端 Ready、正式網域及核心功能驗收；以下保留作新環境／重部署參考，不要求重建已有 Project。最新狀態見 [驗收結果](12-acceptance-report.md)，接下來的平台設定見 [Backend 防護](15-backend-security.md)。
+前後端分別部署為兩個 Vercel Project，共用同一個 repository。
 
 ## 先準備 Git（本機）
 
@@ -14,9 +12,9 @@ git log -1 --oneline
 
 安全檢查只列出位置，不印出密鑰。它會比對本機環境檔的敏感值並檢查常見 token 格式，不保證識別所有格式。`backend/.env.local`、`.env.test.local`、`frontend/.env.local`、日誌、套件、測試輸出與私鑰檔均不可加入 Git；只有空白範本 `.env.example` 可以追蹤。
 
-本機提交確認後，由你執行 `git push origin main` 將 main 上傳；如果遠端有新提交，不要使用 force push，先停止並檢查差異。若 GitHub 已連到 Vercel，push 可能立即觸發部署；請先確認平台設定。未取得推送授權時，協作代理只做本機提交。
+提交並執行 `git push origin main`。若 GitHub 已連到 Vercel，push 會依整合設定觸發部署。遠端有新提交時，先整合差異，不使用 force push 覆寫。
 
-## 瀏覽器操作順序（你操作）
+## 建立 Project
 
 1. 登入 Vercel，選 **Add New → Project**，匯入 `fengyenchia/context-flow`。若沒有權限，先授權 Vercel GitHub App 讀取該 repository。
 2. 同一個 repository 匯入兩次：先 `context-flow-backend`，再 `context-flow-frontend`；不要把兩者都設成 repository 根目錄。
@@ -35,14 +33,14 @@ git log -1 --oneline
 
 程式已釘選 Node 24、pnpm 11.19.0，正式 build 使用已驗證的 Webpack 路徑。Vercel 建置日誌應顯示相符的 Node/pnpm；不要為了部署重新產生 lockfile。
 
-4. Environment Variables 先只勾 **Production**，敏感值設為 Sensitive（若介面提供）。從本機環境檔自行複製，不貼到聊天。Preview 不要沿用 production 的 Neon、寄信或 R2 secrets；需要 Preview 時另建隔離設定。
+4. Environment Variables 選擇 **Production**，敏感值設為 Sensitive（若介面提供）。Preview 另設隔離的 Neon、寄信與 R2 資源。
 5. 建立／部署 backend，再建立／部署 frontend；未綁正式網域前，不用兩個不同 `vercel.app` 網址驗收登入重整。
 6. 兩個 Project 各進 **Settings → Domains** 加入下方網域，在 DNS 平台依 Vercel 當下顯示的記錄填寫；不要照抄舊 IP。等待 DNS 與 HTTPS 正常。
 7. 將 R2 bucket CORS 的 AllowedOrigins 加上正式前端網址（保留你仍需要的 localhost 開發來源）。核對 backend 的前端網址變數，變更變數後重新部署；前端 `NEXT_PUBLIC_` 變數需重新 build 才生效。
 8. 如果 API 請求遇到 Vercel 平台登入頁／401，確認 backend 的 Production Deployment Protection 沒有攔截一般使用者的 API；不要把 protection bypass secret 填到前端。
-9. 依下方「部署後檢查」驗收，再於 Vercel Firewall 設定登入／註冊／重設密碼的跨實例限流。保留權限與個人資料遮罩，不要提交含 cookie/token 的截圖或 HAR。
+9. 完成「部署後檢查」，再依 [Backend 防護](15-backend-security.md) 設定平台限流。截圖與日誌須遮蔽個資及憑證。
 
-目前 production migration 到 0004 已完成，不需要為這次部署重新對 production 跑 migration。`TEST_DATABASE_URL` 只留本機測試，不填進 Vercel；不要把備份或測試 branch 換成正式 `DATABASE_URL`。
+重新部署不需重跑已套用的 migration。`TEST_DATABASE_URL` 僅供本機隔離測試，不填入 Vercel。
 
 建議同一 Git repository 建立兩個 Vercel Project，分別指定 Root Directory。正式網域為：
 
@@ -80,12 +78,12 @@ Backend production 至少需要 JWT secrets、`DATABASE_URL`、API Key encryptio
 
 Backend 需填的變數名稱（值從本機安全複製，沿用已有加密 key 才能解密既有 Gemini Key）：`DATABASE_URL`、`JWT_ACCESS_SECRET`、`JWT_REFRESH_SECRET`、`USER_API_KEY_ENCRYPTION_KEY`、`RESEND_API_KEY`、`EMAIL_FROM`、`R2_ACCOUNT_ID`、`R2_BUCKET_NAME`、`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`、`FRONTEND_URL`、`PUBLIC_APP_URL`、`GEMINI_MODEL`（沿用目前值）、`DATA_MODE=neon`、`ENABLE_EXPERIMENTAL_COREPACK=1`。`NODE_ENV` 由 Vercel 正式 build/runtime 提供即可，不必手動覆寫。
 
-既有環境已完成管理員設定時，應移除 Backend 各適用環境中的 `INITIAL_ADMIN_USERNAME`、`INITIAL_ADMIN_PASSWORD_HASH`，再重新部署 Backend；不要改填現有管理員帳號。管理權限已存在資料庫，移除這兩項不會取消權限。本機環境檔的清理不會同步修改 Vercel。
+完成管理員初始化後，移除 `INITIAL_ADMIN_USERNAME`、`INITIAL_ADMIN_PASSWORD_HASH`，再重新部署 Backend。
 
 Frontend 只填 `NEXT_PUBLIC_API_BASE_URL` 和 `ENABLE_EXPERIMENTAL_COREPACK=1`；不要填資料庫、JWT、R2、Resend 或使用者 Gemini secrets。
 
 > [!CAUTION]
-> 目前 production 已到 migration 0004，不重跑歷史 migration；只有全新環境才需先遷移。程式已接上 Neon 正規化交易保存、驗證 token 落盤及畫布版本衝突檢查；仍需依 [上線前操作清單](11-release-checklist.md) 驗證正式網址，不能只憑 build 成功視為可上線。
+> 新環境需先完成資料庫 migration；既有環境不得重跑已套用版本。建置成功後仍需依 [上線檢查清單](11-release-checklist.md) 驗證實際流程。
 
 ## 部署後檢查
 
@@ -119,7 +117,7 @@ FRONTEND_URL=https://context-flow.fengyenchia.com
 
 註冊驗證信與忘記密碼信都由 backend 發送。沒有設定 `RESEND_API_KEY` 時，開發模式會把驗證連結印在 backend console，不會真的寄信。
 
-## 官方設定參考（本輪已核對）
+## 官方設定參考
 
 - [Monorepo 與 workspace 偵測](https://vercel.com/docs/monorepos)
 - [Root Directory 以外的來源檔案](https://vercel.com/docs/monorepos/monorepo-faq)

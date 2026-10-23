@@ -4,7 +4,7 @@
 
 以節點畫布整理專案資料、討論與決策的工作台。支援個人／共享工作區，使用者可用自己的 Gemini API Key 協助整理資料、發散與收斂。
 
-[正式網站](https://context-flow.fengyenchia.com) · [文件索引](docs/README.md) · [部署](docs/08-vercel-deployment.md) · [驗收結果](docs/12-acceptance-report.md)
+[正式網站](https://context-flow.fengyenchia.com) · [文件索引](docs/README.md) · [部署](docs/08-vercel-deployment.md) · [驗收項目](docs/12-acceptance-report.md)
 
 ## 功能與範圍
 
@@ -18,7 +18,7 @@
 | 檔案 | R2 私人 bucket、20 MB 以內非空檔案、預簽上傳、完成確認與授權下載 |
 | 匯出 | PDF 分頁；PNG 依資料池與三區分片，包成 ZIP；保留節點底色與連線 |
 
-共享工作區不是即時多人共編：目前以版本檢查保護輪流編輯，不自動合併衝突。檔案保存不等於 PDF 解析或 RAG。RAG、群組與 Markdown／JSON／SVG 匯出不在目前版本；Liveblocks、Inngest 索引、版本歷史、復原／重做等未實作內容不列為已完成功能。
+共享工作區以版本檢查保護輪流編輯，不提供即時共編或自動合併衝突。上傳的檔案供保存與下載，不提供 PDF 解析或 RAG 檢索。
 
 ## 技術與目錄
 
@@ -26,7 +26,7 @@ Node.js 24.x、pnpm 11.19.0 workspace；前後端皆為 Next.js 16／TypeScript�
 
 ```text
 frontend/src/        頁面、UI、畫布與 API client（開發埠 3000）
-frontend/public/     實際使用的品牌圖片
+frontend/public/     品牌圖片與靜態資源
 backend/app/api/    Next.js Route Handlers（開發埠 3001）
 backend/server/     驗證、權限、持久化、檔案與服務邏輯
 backend/src/db/     Drizzle schema 與 Neon client
@@ -60,7 +60,7 @@ pnpm dev
 | --- | --- |
 | `frontend/.env.local` → `NEXT_PUBLIC_API_BASE_URL` | 本機為 `http://localhost:3001/api`；正式值只填 Vercel Frontend |
 | `backend/.env.local` → `FRONTEND_URL`、`PUBLIC_APP_URL` | 本機前端來源及郵件連結；正式使用同站 HTTPS 網域 |
-| `DATABASE_URL` | Neon 持久化；保持既有 production 連線 |
+| `DATABASE_URL` | Neon 資料庫連線 |
 | `JWT_ACCESS_SECRET`、`JWT_REFRESH_SECRET` | 不同的登入簽署密鑰 |
 | `USER_API_KEY_ENCRYPTION_KEY` | base64 編碼的 32-byte AES key；已有資料時不可直接更換 |
 | `RESEND_API_KEY`、`EMAIL_FROM` | 註冊驗證與密碼重設郵件 |
@@ -97,7 +97,7 @@ Gemini Key 由使用者登入後在「AI Key」設定，不設共用的前端密
 | `pnpm build` | 前後端 Webpack 正式建置 |
 | `pnpm check` | lint、型別、單元測試、建置；不包含所有 E2E／DB／密鑰測試 |
 
-詳細隔離方式、結果與已知警告見 [測試指南](docs/10-e2e-testing.md) 與 [驗收報告](docs/12-acceptance-report.md)。測試輸出、環境檔與套件不進 Git。密鑰掃描不保證識別所有格式，仍需人工檢查差異。
+測試隔離方式見 [測試指南](docs/10-e2e-testing.md)，人工檢查見 [驗收項目](docs/12-acceptance-report.md)。測試輸出、環境檔與套件不進 Git。密鑰掃描不保證識別所有格式，仍需人工檢查差異。
 
 ## 部署與防護
 
@@ -106,9 +106,9 @@ Gemini Key 由使用者登入後在「AI Key」設定，不設共用的前端密
 - 前端：`https://context-flow.fengyenchia.com`
 - API：`https://api.context-flow.fengyenchia.com/api`
 
-兩端使用同站 HTTPS 網域以配合 refresh cookie 的 `SameSite=Lax`。正式密鑰只放 Backend Production，不複製到 Preview 或 `NEXT_PUBLIC_*`。目前 production 已到 migration 0004，不因重新部署重跑舊 migration。
+兩端使用同站 HTTPS 網域以配合 refresh cookie 的 `SameSite=Lax`。正式密鑰只放 Backend Production，不複製到 Preview 或 `NEXT_PUBLIC_*`。重新部署不需重跑已套用的 migration。
 
-使用者已回報正式站核心流程、共享權限、雙分頁衝突、離線重試、檔案、AI、匯出及郵件／密碼重設通過；平台防護與維運設定仍須獨立確認。見 [部署](docs/08-vercel-deployment.md)、[Backend 防護](docs/15-backend-security.md)、[剩餘清單](docs/11-release-checklist.md)。
+部署設定見 [Vercel 部署](docs/08-vercel-deployment.md)、[Backend 防護](docs/15-backend-security.md) 與 [上線檢查清單](docs/11-release-checklist.md)。
 
 ## 常見問題與限制
 

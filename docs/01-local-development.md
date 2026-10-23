@@ -20,12 +20,12 @@ if (!(Test-Path frontend/.env.local)) { Copy-Item frontend/.env.example frontend
 
 - 未設定 `DATABASE_URL`：使用記憶體，重啟後資料清空。
 - 有設定 `DATABASE_URL`：使用該 Neon 連線；`DATA_MODE=memory` 不是覆蓋連線的隔離開關。
-- 既有本機檔若連到 production，不為了測試改動它；用 [隔離測試入口](10-e2e-testing.md) 或另建環境。
+- 自動化測試使用 [隔離測試入口](10-e2e-testing.md)，避免寫入正式資料庫。
 - 未設定 Resend 時，開發模式把驗證／重設連結印在 backend console；註冊仍須完成驗證。
 - R2 未設定時不能上傳原始檔，文字／連結與一般節點不依賴 R2。
 - AI 需要 base64 32-byte 的 `USER_API_KEY_ENCRYPTION_KEY`；已有資料時沿用原值，使用者 Key 在介面設定，見 [Gemini](04-gemini-api-key.md)。
 
-完整名稱見 `backend/.env.example`、`frontend/.env.example`；不要把示範檔當作真實密鑰來源。
+環境變數範本見 `backend/.env.example`、`frontend/.env.example`。
 
 ## 啟動與操作
 

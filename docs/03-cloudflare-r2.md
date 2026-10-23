@@ -1,6 +1,6 @@
 # Cloudflare R2 檔案保存
 
-目前正式來源 CORS 已由使用者修改，並回報上傳、重載與下載成功。以下為重建／排錯參考，不需重建既有 bucket 或金鑰。
+原始檔案保存於私人 bucket，透過預簽網址上傳與下載。
 
 ## 平台設定
 
@@ -15,7 +15,7 @@ R2_SECRET_ACCESS_KEY=
 
 Bucket CORS 範例（將正式網域換成你的前端）：
 
-正式站曾出現 localhost 預檢 204、正式 origin 403；`AllowedOrigins` 必須包含 `https://context-flow.fengyenchia.com`，不加路徑或結尾 `/`。來源列表保留仍需使用的環境，不用公開 bucket。若 API 預簽成功、R2 PUT `Failed to fetch`，先核對 CORS 與預檢，再查憑證／網路，不重複盲目上傳。
+`AllowedOrigins` 必須包含前端的完整 origin，不加路徑或結尾 `/`。若 API 預簽成功但 R2 PUT 出現 `Failed to fetch`，先檢查 CORS 預檢，再檢查憑證與網路；不要公開 bucket 來繞過問題。
 
 ```json
 [{
@@ -27,7 +27,7 @@ Bucket CORS 範例（將正式網域換成你的前端）：
 }]
 ```
 
-## 程式已接上的流程
+## 上傳與下載流程
 
 1. POST /api/projects/:projectId/files/upload：檢查 workspace 寫入權限、非空白及 20 MB 限制，保留 pending 檔案紀錄，回傳 10 分鐘有效的預簽 PUT URL。
 2. 前端直接 PUT 原始檔案到 R2，秘密不會進入瀏覽器。
