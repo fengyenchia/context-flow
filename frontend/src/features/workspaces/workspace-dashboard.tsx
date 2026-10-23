@@ -1,6 +1,7 @@
 "use client";
 
 import { ProjectCard } from "./project-card";
+import { ProductTour } from '@/features/onboarding/product-tour';
 import { WorkspaceMembers } from "./workspace-members";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import {
@@ -102,20 +103,24 @@ export function WorkspaceDashboard() {
     <div className="mx-auto max-w-6xl p-5 sm:p-8 lg:p-10">
       <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">
+          <h1 data-tour="workspaces" className="text-3xl font-semibold tracking-tight">
             工作區
           </h1>
         </div>
-        <Button
-          aria-haspopup="dialog"
-          onClick={() => {
-            setCreateError("");
-            setShowCreate(true);
-          }}
-        >
-          <Plus className="size-4" />
-          新增共享工作區
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <ProductTour stage="workspace" />
+          <Button
+            data-tour="create-workspace"
+            aria-haspopup="dialog"
+            onClick={() => {
+              setCreateError("");
+              setShowCreate(true);
+            }}
+          >
+            <Plus className="size-4" />
+            新增共享工作區
+          </Button>
+        </div>
       </header>
       {error && (
         <div
@@ -428,6 +433,7 @@ function CreateProjectCard({
           setError("");
           setOpen(true);
         }}
+        data-tour="create-project"
         className="min-h-48 rounded-primary border border-dashed p-5 text-left text-sm font-medium text-muted hover:border-primary hover:bg-surface"
       >
         <Plus className="mb-8 size-5" />

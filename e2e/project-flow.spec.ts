@@ -61,6 +61,13 @@ async function login(page: Page, username: string) {
   await expect(
     page.getByRole("heading", { name: "工作區", exact: true }),
   ).toBeVisible();
+  // New registrations receive onboarding; dismiss it in the unrelated canvas regression flow.
+  const session = await (await authenticated).json();
+  const onboarding = await page.evaluate((id: string) => localStorage.getItem(`contextflow:onboarding:v1:${id}`), session.user.id);
+  if (onboarding && !JSON.parse(onboarding).workspace) {
+    await page.getByRole('button', { name: '跳過教學', exact: true }).click();
+    await expect(page.getByRole('alertdialog')).toHaveCount(0);
+  }
 }
 
 async function accessToken(request: APIRequestContext, username: string) {

@@ -64,6 +64,7 @@ import {
   saveCanvas,
 } from "@/lib/api/projects";
 import { useAuthStore } from "@/stores/auth-store";
+import { ProductTour } from '@/features/onboarding/product-tour';
 import { useVerticalSplit } from "./resizable-left-panel";
 import { findFreeNodePosition } from "./node-placement";
 import { NODE_COLORS, NodeColorPicker } from "./node-color-picker";
@@ -1198,6 +1199,9 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
   const activeConversation = useRef("general");
   const currentUser = useAuthStore((state) => state.user);
   const canEdit = project?.role !== "viewer";
+  const prepareTour = useCallback(() => {
+    setCollapsed({ pool: false, zone: false, diverge: false, converge: false });
+  }, []);
   useEffect(() => {
     const element = root.current;
     if (!element || !canEdit) return;
@@ -2382,9 +2386,9 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
     <div
       ref={root}
       data-project-canvas
-      className="flex h-screen min-h-176 flex-col bg-background"
+      className="flex h-screen min-h-[80rem] flex-col bg-background lg:min-h-176"
     >
-      <header className="flex min-h-14 shrink-0 items-center gap-3 border-b border-border bg-surface px-4">
+      <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-border bg-surface px-4 py-2">
         <Button
           variant="ghost"
           size="icon"
@@ -2393,15 +2397,16 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
         >
           <ArrowLeft className="size-5" />
         </Button>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-20 flex-1">
           <h1 className="truncate text-sm font-semibold">{project.name}</h1>
           <p className="truncate text-xs text-muted">
             {project.description || "專案工作區"}
           </p>
         </div>
+        <ProductTour key={project.id} stage="canvas" readOnly={!canEdit} onBeforeStart={prepareTour} />
         <Badge>{project.role}</Badge>
         {project.role !== "viewer" && (
-          <span role="status" className="text-xs text-muted" aria-live="polite">
+          <span data-tour="canvas-save" role="status" className="text-xs text-muted" aria-live="polite">
             {saveStatus === "saving" ? (
               "儲存中…"
             ) : saveStatus === "conflict" ? (
@@ -2423,7 +2428,7 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
             )}
           </span>
         )}
-        <div className="flex items-center gap-1">
+        <div data-tour="canvas-export" className="flex items-center gap-1">
           <Button
             size="sm"
             variant="ghost"
@@ -2561,6 +2566,7 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
               </button>
               <div
                 data-export-exclude
+                data-tour="assistant"
                 className="flex min-h-0 flex-1 flex-col border-t border-border bg-background"
               >
                 <div data-conversation-header className="mb-3 flex items-center gap-2 px-3 pt-3 text-sm font-semibold">
@@ -3286,6 +3292,7 @@ function NodeToolbar({ area }: { area: "zone" | "diverge" | "converge" }) {
     );
   return (
     <div
+      data-tour={`node-toolbar-${area}`}
       data-export-exclude
       className="flex shrink-0 items-center gap-1 border-b border-border bg-surface px-3 py-2"
     >
@@ -3812,6 +3819,7 @@ function ResourceComposer({
     <div
       className="space-y-3 rounded-primary border border-dashed border-primary/40 bg-primary/10 p-3"
       data-export-exclude
+      data-tour="resources"
       onDragOver={(event) => event.preventDefault()}
       onDrop={(event) => {
         event.preventDefault();

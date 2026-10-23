@@ -8,6 +8,7 @@
 | `pnpm test:e2e:api` | 註冊、驗證、登入、工作區、角色權限、專案、畫布保存與錯誤回滾 |
 | `pnpm test:e2e` | Chromium 瀏覽器流程：登入、畫布編輯、重載、匯出、視窗操作、離線與雙分頁衝突 |
 | `pnpm exec playwright test e2e/home.spec.ts` | 首頁 GSAP 動態、捲動按鈕、FAQ、換頁清理、手機排版、深色模式與減少動態設定 |
+| `pnpm exec playwright test e2e/onboarding.spec.ts` | 新註冊教學啟用、工作區接續畫布、跳過／重看／返回／Esc、收合區域、手機深色模式與唯讀角色；API 使用替身，不呼叫付費 AI |
 | `pnpm check:test-db` | 離線檢查測試庫與正式庫是否隔離，不連線或執行 migration |
 | `pnpm test:db` | 專用 Neon 測試庫的 migration、跨程序還原、驗證 token、版本衝突與交易回滾 |
 | `pnpm test:secrets` | 密鑰掃描工具的隔離測試 |

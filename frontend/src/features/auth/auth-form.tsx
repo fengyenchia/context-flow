@@ -1,5 +1,7 @@
 "use client";
 
+import { armOnboarding } from '@/features/onboarding/tour-progress';
+
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -83,6 +85,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
               displayName: String(payload.displayName),
             })
           : await login({ username, password });
+      if (mode === "register") armOnboarding(data.user.id);
       if (!data.accessToken) {
         window.sessionStorage.setItem(
           "contextflow-auth-message",
