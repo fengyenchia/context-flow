@@ -98,6 +98,7 @@ export default function HomePage() {
             </p>
             <div data-home-hero className="mt-8 flex flex-wrap items-center gap-4">
               <Link href="/register" className={primaryLink}>建立帳號<ArrowRight aria-hidden="true" className="size-4" /></Link>
+              <Link href="/guide" className={`inline-flex min-h-12 items-center justify-center rounded-primary px-6 font-semibold hover:bg-secondary ${linkFocus}`}>使用手冊</Link>
             </div>
           </div>
           <CanvasPreview />

@@ -88,6 +88,32 @@ test('manual is readable on small screens, in dark mode, and in print', async ({
   await expect(page.getByRole('article')).toBeVisible();
 });
 
+for (const width of [1203, 375]) {
+  test(`homepage hero opens the manual beside registration (${width}px)`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 800 });
+    await page.route('**/api/auth/refresh', route => route.fulfill({ status: 401, json: {} }));
+    await page.goto('/');
+    const hero = page.getByRole('region', { name: /整理資料，\s*串起想法與決策。/ });
+    const register = hero.getByRole('link', { name: '建立帳號', exact: true });
+    const manual = hero.getByRole('link', { name: '使用手冊', exact: true });
+    await expect(manual).toHaveAttribute('href', '/guide');
+    await expect(manual).toBeVisible();
+    await expect.poll(async () => {
+      const a = await register.boundingBox();
+      const b = await manual.boundingBox();
+      return !!a && !!b && b.x >= a.x + a.width && Math.abs(a.y - b.y) < 1 && a.height === b.height;
+    }).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('homepage-manual.png') });
+    await register.focus();
+    await page.keyboard.press('Tab');
+    await expect(manual).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/guide$/);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('使用手冊');
+  });
+}
+
 test('homepage footer opens the manual', async ({ page }) => {
   await page.route('**/api/auth/refresh', route => route.fulfill({ status: 401, json: {} }));
   await page.goto('/');
