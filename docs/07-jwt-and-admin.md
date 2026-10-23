@@ -30,20 +30,6 @@ pnpm --filter @context-flow/backend admin:hash-password "請換成至少8字元�
 
 密碼、雜湊與連線字串不得提交到 Git。
 
-### 管理員信箱綁定工具
-
-既有 `admin` 帳號尚未綁定信箱時，資料庫維運者可執行：
-
-```powershell
-pnpm --filter @context-flow/backend admin:bind-email
-```
-
-工具使用 Backend 的 `DATABASE_URL`，只接受啟用中且未綁定信箱的 `admin`。Email 隱藏輸入兩次，再輸入 `BIND ADMIN` 確認；已被其他帳號使用的 Email 不可綁定。更新會撤銷該帳號的舊 session、驗證與密碼重設連結。
-
-綁定後，從登入頁「重寄驗證信」完成驗證，再使用「忘記密碼」設定密碼。連線中斷時，先唯讀確認帳號狀態再重試。
-
-單元測試：`node --test backend/scripts/bind-admin-email.test.mjs`（不連線資料庫）。
-
 ## 郵件驗證與重設
 
 - 註冊須完成 Email 驗證；可重寄驗證信。

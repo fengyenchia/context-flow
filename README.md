@@ -36,6 +36,8 @@ scripts/           測試入口、環境／密鑰／資料庫隔離檢查
 docs/              現行設定、部署、防護與驗收文件
 ```
 
+網站 metadata 位於 `frontend/src/lib/site-metadata.ts`，分享圖為 `frontend/public/brand/og-image.png`（1200 × 630）。修改圖面後可執行 `node scripts/generate-og-image.mjs` 重新輸出，需已安裝 Playwright Chromium 與繁體中文字型。
+
 ## 本機啟動
 
 先安裝 Node.js 24.x 與 pnpm 11.19.0。在 repository 根目錄執行，不要混用 npm 或分開安裝兩個 package。

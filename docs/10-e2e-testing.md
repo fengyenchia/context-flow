@@ -11,7 +11,6 @@
 | `pnpm test:db` | 專用 Neon 測試庫的 migration、跨程序還原、驗證 token、版本衝突與交易回滾 |
 | `pnpm test:secrets` | 密鑰掃描工具的隔離測試 |
 | `pnpm check:secrets -- --staged --history` | 暫存區與本機 Git 歷史的敏感資料掃描 |
-| `node --test backend/scripts/bind-admin-email.test.mjs` | 管理員信箱工具的隱藏輸入、取消、條件檢查與錯誤遮罩 |
 
 首次執行瀏覽器測試前安裝 Chromium：
 

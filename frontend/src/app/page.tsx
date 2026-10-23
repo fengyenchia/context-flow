@@ -1,6 +1,9 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { IconArrowRight as ArrowRight, IconFileSearch as FileSearch, IconGitBranch as GitBranch, IconSparkles as Sparkles, IconUsers as Users } from '@tabler/icons-react';
 import { BrandLogo } from '@/components/brand-logo';
+
+export const metadata: Metadata = { alternates: { canonical: '/' } };
 
 export default function HomePage() {
   return (
