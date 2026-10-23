@@ -43,6 +43,7 @@ async function finish(page: Page, titles: string[]) {
   for (const [index, title] of titles.entries()) {
     const dialog = page.getByRole('alertdialog');
     await expect(dialog.getByRole('heading', { name: title, exact: true })).toBeVisible();
+    await expect(dialog).toBeInViewport({ ratio: 1 });
     await expect(dialog.locator('[title]')).toHaveCount(0);
     await expect(dialog.locator('a[href="/guide"]')).toHaveCount(index === titles.length - 1 ? 1 : 0);
     await dialog.getByRole('button', { name: index === titles.length - 1 ? '完成教學' : '下一步', exact: true }).click();
@@ -151,3 +152,34 @@ test('viewer is not auto-enrolled and can replay a read-only introduction', asyn
   await expect(page.getByRole('alertdialog')).toContainText('僅檢視');
   await page.getByRole('button', { name: '跳過教學', exact: true }).click();
 });
+
+for (const viewport of [{ width: 956, height: 665 }, { width: 667, height: 375 }]) {
+  test(`every canvas tooltip fits the viewport (${viewport.width}x${viewport.height})`, async ({ page }, testInfo) => {
+    await page.setViewportSize(viewport);
+    await fixture(page, { canvasPending: true });
+    await page.goto(canvasUrl);
+    const dialog = page.getByRole('alertdialog');
+    for (const [index, title] of canvasTitles.entries()) {
+      await expect(dialog.getByRole('heading', { name: title, exact: true })).toBeVisible();
+      await expect.poll(async () => {
+        const box = await dialog.boundingBox();
+        const size = page.viewportSize()!;
+        return !!box && box.x >= 15 && box.y >= 15 && box.x + box.width <= size.width - 15 && box.y + box.height <= size.height - 15;
+      }).toBe(true);
+      if (index === 5) {
+        // Regression: the convergence tooltip used to be clipped above the screen.
+        await expect(dialog.getByRole('heading', { name: title, exact: true })).toBeInViewport({ ratio: 1 });
+        await page.screenshot({ path: testInfo.outputPath('convergence-tooltip.png') });
+        await page.setViewportSize({ width: 1024, height: 500 });
+        await expect(dialog).toBeInViewport({ ratio: 1 });
+        await page.setViewportSize(viewport);
+        await expect(dialog).toBeInViewport({ ratio: 1 });
+      }
+      const next = dialog.getByRole('button', { name: index === canvasTitles.length - 1 ? '完成教學' : '下一步', exact: true });
+      await next.scrollIntoViewIfNeeded();
+      await expect(next).toBeInViewport({ ratio: 1 });
+      await next.click();
+    }
+    await expect(dialog).toHaveCount(0);
+  });
+}

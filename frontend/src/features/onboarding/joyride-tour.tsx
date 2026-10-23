@@ -44,6 +44,13 @@ export default function JoyrideTour({ steps, onFinish }: { steps: Step[]; onFini
     if (event.type === EVENTS.ERROR || event.type === EVENTS.TARGET_NOT_FOUND) onFinish('error');
   };
   return <Joyride continuous run steps={steps} tooltipComponent={TourTooltip} onEvent={onEvent} styles={{ floater: { transition: 'none' } }}
+    floatingOptions={{
+      strategy: 'fixed',
+      // Large canvas targets leave no room above/below. Shift on both axes so
+      // the tooltip stays inside the viewport even when it must overlap them.
+      shiftOptions: { boundary: [], rootBoundary: 'viewport', padding: 16, crossAxis: true },
+      flipOptions: { boundary: [], rootBoundary: 'viewport', padding: 16 },
+    }}
     locale={{ back: '上一步', close: '關閉教學', last: '完成教學', next: '下一步', skip: '跳過教學', open: '開啟教學' }}
     options={{ skipBeacon: true, blockTargetInteraction: true, overlayClickAction: false, dismissKeyAction: false, closeButtonAction: 'skip', scrollDuration: 0, scrollOffset: 24, targetWaitTimeout: 2500, spotlightPadding: 5, spotlightRadius: 8, arrowColor: 'var(--surface)', zIndex: 1000 }} />;
 }
