@@ -22,10 +22,10 @@ describe('site metadata', () => {
     expect(image.length).toBeLessThan(5 * 1024 * 1024);
   });
 
-  it('keeps private routes out of indexing and only lists the public home page', () => {
+  it('keeps private routes out of indexing and lists the public home and guide', () => {
     expect(privateMetadata.robots).toEqual({ index: false, follow: false });
     expect(privateMetadata.referrer).toBe('no-referrer');
-    expect(sitemap()).toEqual([{ url: site.url }]);
+    expect(sitemap()).toEqual([{ url: site.url }, { url: `${site.url}/guide` }]);
     expect(robots().sitemap).toBe(`${site.url}/sitemap.xml`);
     expect(siteMetadata).not.toHaveProperty('alternates');
   });

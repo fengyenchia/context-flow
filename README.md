@@ -4,7 +4,7 @@
 
 以節點畫布整理專案資料、討論與決策的工作台。支援個人／共享工作區，使用者可用自己的 Gemini API Key 協助整理資料、發散與收斂。
 
-[正式網站](https://context-flow.fengyenchia.com) · [文件索引](docs/README.md) · [部署](docs/08-vercel-deployment.md) · [驗收項目](docs/12-acceptance-report.md)
+[正式網站](https://context-flow.fengyenchia.com) · [使用手冊](https://context-flow.fengyenchia.com/guide) · [文件索引](docs/README.md) · [部署](docs/08-vercel-deployment.md) · [驗收項目](docs/12-acceptance-report.md)
 
 ## 功能與範圍
 

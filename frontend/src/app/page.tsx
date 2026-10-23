@@ -169,6 +169,7 @@ export default function HomePage() {
           <nav aria-label="頁尾資源導覽">
             <h2 className="mb-2 text-sm font-semibold">資源</h2>
             <ul>
+              <li><Link href="/guide" className={`inline-flex min-h-11 items-center text-sm text-muted hover:text-foreground ${linkFocus}`}>使用手冊</Link></li>
               <li><a href="https://github.com/fengyenchia/context-flow" className={`inline-flex min-h-11 items-center text-sm text-muted hover:text-foreground ${linkFocus}`}>GitHub</a></li>
               <li><a href="https://github.com/fengyenchia/context-flow#readme" className={`inline-flex min-h-11 items-center text-sm text-muted hover:text-foreground ${linkFocus}`}>專案文件</a></li>
               <li><Link href="/login" className={`inline-flex min-h-11 items-center text-sm text-muted hover:text-foreground ${linkFocus}`}>登入工作區</Link></li>
