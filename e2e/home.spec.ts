@@ -16,8 +16,7 @@ test('home has complete navigation, working FAQ, registration links and footer',
   await expect(page.getByRole('link', { name: '建立帳號', exact: true })).toHaveAttribute('href', '/register');
   await expect(header.getByRole('link')).toHaveCount(3);
   await expect(page.locator('header a[href^="#"], main a[href^="#"], footer a[href^="#"]')).toHaveCount(0);
-  await page.getByRole('button', { name: '了解使用方式' }).click();
-  await expect(page.locator('#workflow')).toBeFocused();
+  await expect(page.getByRole('button', { name: '了解使用方式' })).toHaveCount(0);
   const footerNavigation = page.getByRole('navigation', { name: '頁尾產品導覽' });
   for (const [label, id] of [['功能', 'features'], ['使用方式', 'workflow'], ['常見問題', 'faq']]) {
     await footerNavigation.getByRole('button', { name: label, exact: true }).click();
@@ -92,7 +91,7 @@ test('GSAP settles and reinitializes after client navigation without runtime err
   await expect(page.locator('[data-home-motion]')).toHaveAttribute('data-motion-ready', 'true');
   await expect(heading).toHaveCSS('opacity', '1');
   await expect(heading).toHaveCSS('transform', 'none');
-  await page.getByRole('button', { name: '了解使用方式' }).click();
+  await page.getByRole('navigation', { name: '頁尾產品導覽' }).getByRole('button', { name: '使用方式', exact: true }).click();
   await expect(page.locator('#workflow')).toBeFocused();
   const question = page.getByText('一定要使用 AI 嗎？', { exact: true });
   await question.click();

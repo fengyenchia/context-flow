@@ -98,7 +98,6 @@ export default function HomePage() {
             </p>
             <div data-home-hero className="mt-8 flex flex-wrap items-center gap-4">
               <Link href="/register" className={primaryLink}>建立帳號<ArrowRight aria-hidden="true" className="size-4" /></Link>
-              <button type="button" data-home-scroll="workflow" className={`inline-flex min-h-12 cursor-pointer items-center px-2 font-medium hover:text-muted ${linkFocus}`}>了解使用方式</button>
             </div>
           </div>
           <CanvasPreview />
