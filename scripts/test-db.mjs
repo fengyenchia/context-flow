@@ -37,6 +37,8 @@ const env = {
   CONTEXT_FLOW_DB_TEST_PRODUCTION_TARGET: databaseTarget(original.DATABASE_URL),
   INITIAL_ADMIN_USERNAME: "",
   INITIAL_ADMIN_PASSWORD_HASH: "",
+  COLLABORATION_ENABLED: "false",
+  LIVEBLOCKS_SECRET_KEY: "",
   DB_RESTART_PROBE: "",
   RESEND_API_KEY: "",
   EMAIL_FROM: "",
@@ -45,7 +47,9 @@ const env = {
   R2_ACCESS_KEY_ID: "",
   R2_SECRET_ACCESS_KEY: "",
 };
-for (const args of [
+const commands = process.argv.includes('--collaboration-only') ? [
+  ['node_modules/vitest/vitest.mjs', 'run', 'server/collaboration-lock.db-spec.ts', '--config', 'vitest.config.db.ts'],
+] : [
   [
     "node_modules/drizzle-kit/bin.cjs",
     "migrate",
@@ -53,7 +57,8 @@ for (const args of [
     "drizzle.config.ts",
   ],
   ["node_modules/vitest/vitest.mjs", "run", "--config", "vitest.config.db.ts"],
-]) {
+];
+for (const args of commands) {
   const result = spawnSync(
     process.execPath,
     [resolve("backend", args[0]), ...args.slice(1)],

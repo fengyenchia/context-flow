@@ -47,6 +47,7 @@ import {
   isValidElement,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type ComponentProps,
@@ -79,6 +80,9 @@ import type {
 } from "@/lib/api/types";
 import { exportProjectPdf, exportProjectPng } from "./export-utils";
 import { exportErrorMessage, readImageData } from "./image-data";
+import { CanvasReplica } from './canvas-replica';
+import { readSnapshot, type Snapshot } from '@context-flow/collaboration';
+import type { SyncState } from './collaboration-connection';
 
 type FlowProps = ComponentProps<typeof BaseReactFlow>;
 function ReactFlow(props: FlowProps) {
@@ -1145,6 +1149,11 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
   const saveRevision = useRef<string | null>(null);
   const saveConflict = useRef(false);
   const unsaved = useRef(false);
+  const replica = useRef<CanvasReplica | null>(null);
+  const replicaProject = useRef<string | null>(null);
+  const [collaborationReady, setCollaborationReady] = useState(false);
+  const [collaborationStatus, setCollaborationStatus] = useState<SyncState>('connecting');
+  const [otherEditors, setOtherEditors] = useState(0);
   const [saveStatus, setSaveStatus] = useState<
     "saved" | "saving" | "error" | "conflict"
   >("saved");
@@ -1198,7 +1207,7 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
   const replaceMessageIndex = useRef<number | undefined>(undefined);
   const activeConversation = useRef("general");
   const currentUser = useAuthStore((state) => state.user);
-  const canEdit = project?.role !== "viewer";
+  const canEdit = project?.role !== "viewer" && (!project?.collaborationEnabled || collaborationReady);
   const prepareTour = useCallback(() => {
     setCollapsed({ pool: false, zone: false, diverge: false, converge: false });
   }, []);
@@ -1959,7 +1968,79 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
     };
   }, [projectId, setNodes, setEdges]);
   useEffect(() => {
-    if (!canvasHydrated.current || !project || project.role === "viewer")
+    if (!project?.collaborationEnabled) return;
+    let active = true;
+    let disconnect: (() => void) | undefined;
+    const apply = (snapshot: Snapshot) => {
+      if (!active) return;
+      const value = snapshot as unknown as CanvasSnapshot;
+      setNodes(current => value.nodes.map(node => {
+        const data = node.data || {};
+        const previous = current.find(item => item.id === node.id);
+        return { ...node, selected: previous?.selected, data: { ...data, label: canvasNodeLabel(node.id, (data.nodeKind as CanvasNodeKind) || 'text', String(data.nodeTitle || '未命名節點'), String(data.nodeContent || ''), data.imageUrl as string | undefined, data.nodeColor as string | undefined, Boolean(data.starred)) } } as Node;
+      }));
+      setEdges(value.edges as Edge[]);
+      setConvergenceSnapshot({ convergenceNodes: value.convergenceNodes || [], convergenceEdges: value.convergenceEdges || [] });
+      window.dispatchEvent(new CustomEvent('context-flow:hydrate-convergence', { detail: { ...value, collaboration: true } }));
+      setResources(value.resources || []);
+      setSummary(value.summary || '');
+      conversationHistory.current = value.conversations || {};
+      conversationMessages.current = Object.fromEntries(Object.entries(value.conversations || {}).map(([id, history]) => [id, history.map((entry, index) => ({ role: index % 2 === 0 ? 'user' as const : 'assistant' as const, content: entry.replace(/^(使用者|AI)：\s*/, '') }))]));
+      setMessages(conversationMessages.current[activeConversation.current] || []);
+    };
+    void import('@/features/projects/collaboration-connection').then(({ connectCanvas }) => connectCanvas(project.id, {
+      ready: doc => {
+        if (!active) return;
+        replica.current = new CanvasReplica(doc, apply);
+        replicaProject.current = project.id;
+        doc.on('update', (_update: Uint8Array, origin: unknown) => {
+          if (!active || origin !== 'local') return;
+          unsaved.current = true;
+          setCollaborationStatus(current => current === 'offline' || current === 'error' ? current : 'syncing');
+        });
+        apply(readSnapshot(doc));
+        setCollaborationReady(true);
+      },
+      status: (status, count) => {
+        if (!active) return;
+        setCollaborationStatus(status);
+        setOtherEditors(count);
+        unsaved.current = status !== 'synced';
+      },
+    })).then(cleanup => { if (active) disconnect = cleanup; else cleanup(); }).catch(() => { if (active) setCollaborationStatus('error'); });
+    const captureNode = (event: Event) => { const detail = (event as CustomEvent<{ id: string }>).detail; if (detail) replica.current?.captureDraft(detail.id); };
+    const captureEdge = (event: Event) => { const detail = (event as CustomEvent<{ id: string }>).detail; if (detail) replica.current?.captureDraft(detail.id, true); };
+    const saveDraft = (event: Event) => {
+      if (!replica.current || project.role === 'viewer') return;
+      event.stopImmediatePropagation();
+      replica.current.saveDraft((event as CustomEvent<CanvasNodeUpdateEvent & EdgeEditEvent>).detail);
+    };
+    window.addEventListener('context-flow:edit-node', captureNode, true);
+    window.addEventListener('context-flow:open-edit-edge', captureEdge, true);
+    window.addEventListener('context-flow:update-node', saveDraft, true);
+    window.addEventListener('context-flow:update-edge', saveDraft, true);
+    return () => {
+      active = false;
+      replica.current?.destroy(); replica.current = null;
+      replicaProject.current = null;
+      disconnect?.();
+      window.removeEventListener('context-flow:edit-node', captureNode, true);
+      window.removeEventListener('context-flow:open-edit-edge', captureEdge, true);
+      window.removeEventListener('context-flow:update-node', saveDraft, true);
+      window.removeEventListener('context-flow:update-edge', saveDraft, true);
+    };
+    // The room follows project identity, not selection or the current viewport.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project?.id, project?.collaborationEnabled]);
+  useLayoutEffect(() => {
+    if (!collaborationReady || !replica.current || replicaProject.current !== project?.id || project?.role === 'viewer') return;
+    replica.current.publish(JSON.parse(JSON.stringify({
+      nodes: nodes.map(node => ({ id: node.id, position: node.position, data: { ...node.data, label: undefined }, style: node.style })),
+      edges, ...convergenceSnapshot, resources, conversations: conversationHistory.current, summary,
+    })) as Snapshot);
+  }, [collaborationReady, project?.id, project?.role, nodes, edges, convergenceSnapshot, resources, messages, summary]);
+  useEffect(() => {
+    if (!canvasHydrated.current || !project || project.role === "viewer" || project.collaborationEnabled)
       return;
     const sequence = ++saveSequence.current;
     if (saveConflict.current) return;
@@ -2091,7 +2172,9 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
     const conversationId = selectedNode?.startsWith("diverge-")
       ? selectedNode
       : "general";
-    const replacingIndex = replaceMessageIndex.current;
+    // In a shared conversation, regeneration appends a new exchange rather than
+    // truncating another user's concurrently added messages.
+    const replacingIndex = project?.collaborationEnabled ? undefined : replaceMessageIndex.current;
     replaceMessageIndex.current = undefined;
     const activeNode =
       conversationId === "general"
@@ -2170,13 +2253,15 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
         </div>
       ) as unknown as string;
       const nextMessages = [
-        ...pendingMessages,
+        ...(project?.collaborationEnabled
+          ? [...(conversationMessages.current[conversationId] || []), { role: 'user' as const, content: userContent }]
+          : pendingMessages),
         { role: "assistant" as const, content: assistantContent },
       ];
       conversationMessages.current[conversationId] = nextMessages;
       const historyPrefix =
         replacingIndex === undefined
-          ? history
+          ? (project?.collaborationEnabled ? conversationHistory.current[conversationId] || [] : history)
           : history.slice(0, Math.floor(replacingIndex / 2));
       conversationHistory.current[conversationId] = [
         ...historyPrefix,
@@ -2405,7 +2490,10 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
         </div>
         <ProductTour key={project.id} stage="canvas" readOnly={!canEdit} onBeforeStart={prepareTour} />
         <Badge>{project.role}</Badge>
-        {project.role !== "viewer" && (
+        {project.collaborationEnabled && <span role="status" data-tour="canvas-save" data-collaboration-status={collaborationStatus} className="text-xs text-muted" aria-live="polite">
+          {collaborationStatus === 'synced' ? `已同步 · ${otherEditors + 1} 人在線` : collaborationStatus === 'syncing' ? '同步中…' : collaborationStatus === 'offline' ? '連線中斷，重連後自動合併；請勿關閉此頁' : collaborationStatus === 'error' ? '共編連線失敗，請保留此頁並檢查連線' : '正在連接共編…'}
+        </span>}
+        {project.role !== "viewer" && !project.collaborationEnabled && (
           <span data-tour="canvas-save" role="status" className="text-xs text-muted" aria-live="polite">
             {saveStatus === "saving" ? (
               "儲存中…"
@@ -3321,7 +3409,7 @@ function ConvergenceNodeLayer({ editable = true }: { editable?: boolean }) {
           Pick<CanvasSnapshot, "convergenceNodes" | "convergenceEdges">
         >
       ).detail;
-      if (!detail || hydrated.current) return;
+      if (!detail || (hydrated.current && !(detail as typeof detail & { collaboration?: boolean }).collaboration)) return;
       const restored = (detail.convergenceNodes || []).map((node) => {
         const data = node.data || {};
         const kind = (data.nodeKind as CanvasNodeKind) || "text";

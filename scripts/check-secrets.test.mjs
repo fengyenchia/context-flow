@@ -76,3 +76,10 @@ test('ignored local credential files are not candidates for commit', (t) => {
   f.write('.env.local', ['RESEND_API_KEY=', 're_', 'X'.repeat(30)].join(''));
   assert.equal(f.scan().status, 0);
 });
+
+test('detects Liveblocks secret keys without echoing the value', (t) => {
+  const f = fixture(t);
+  const value = ['sk', 'prod', 'X'.repeat(40)].join('_');
+  f.write('source.txt', value);
+  f.safeFailure(f.scan(), value);
+});

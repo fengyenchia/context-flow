@@ -1,6 +1,7 @@
 packages:
   - frontend
   - backend
+  - packages/*
 
 allowBuilds:
   '@google/genai': true

@@ -17,5 +17,6 @@
 | 上線前檢查 | [11 上線檢查清單](11-release-checklist.md) |
 | 功能驗收方式 | [12 驗收項目](12-acceptance-report.md) |
 | Backend Firewall／限流 | [15 防護設定](15-backend-security.md) |
+| Liveblocks 設定、資料保存與共編驗收 | [16 即時共編](16-realtime-collaboration.md) |
 
 密鑰與連線字串只放本機環境檔或平台環境變數，不加入文件或 Git。

@@ -12,6 +12,8 @@ export default defineConfig({
   },
   test: {
     globals: true,
+    testTimeout: 30_000,
+    fileParallelism: false,
     root: import.meta.dirname,
     include: ['server/**/*.e2e-spec.ts'],
     env: {
@@ -21,6 +23,8 @@ export default defineConfig({
       EMAIL_FROM: '',
       INITIAL_ADMIN_USERNAME: '',
       INITIAL_ADMIN_PASSWORD_HASH: '',
+      COLLABORATION_ENABLED: 'false',
+      LIVEBLOCKS_SECRET_KEY: '',
     },
   },
 });

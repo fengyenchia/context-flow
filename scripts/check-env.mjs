@@ -70,9 +70,8 @@ check(
     production ? ["https:"] : ["http:", "https:"],
   ) && /\/api\/?$/.test(frontend.NEXT_PUBLIC_API_BASE_URL || ""),
 );
-console.log(
-  "不輸出密鑰；不檢查 Vercel 上的環境變數；RAG、Liveblocks、Inngest 不列為本版本必要設定。",
-);
+check('backend 即時共編 LIVEBLOCKS_SECRET_KEY', Boolean(backend.LIVEBLOCKS_SECRET_KEY), backend.COLLABORATION_ENABLED === 'true');
+console.log('不輸出密鑰；不檢查 Vercel 上的環境變數；共編只在 COLLABORATION_ENABLED=true 時要求密鑰，RAG、Inngest 非必要設定。');
 check(
   "TEST_DATABASE_URL（選用；未設定就無法驗收 Neon 重啟）",
   Boolean(testUrl),

@@ -15,11 +15,11 @@
 | 畫布 | 資料池、資料架構區、發散思考區、收斂總結區；節點編輯、分色、拖曳、連線與連線文字 |
 | 新手教學 | React Joyride 分段介紹工作區與畫布，可跳過／重看；依帳號在本瀏覽器記錄完成狀態 |
 | AI | 使用者自行設定 Gemini Key；對話轉節點、資料架構生成、依發散內容收斂 |
-| 保存 | Neon 正規化資料表、自動儲存、離線失敗重試、版本衝突拒絕 |
+| 保存與共編 | Neon 帳號／專案資料；可啟用 Liveblocks／Yjs 即時畫布合併，未啟用時沿用快照與版本衝突保護 |
 | 檔案 | R2 私人 bucket、20 MB 以內非空檔案、預簽上傳、完成確認與授權下載 |
 | 匯出 | PDF 分頁；PNG 依資料池與三區分片，包成 ZIP；保留節點底色與連線 |
 
-共享工作區以版本檢查保護輪流編輯，不提供即時共編或自動合併衝突。上傳的檔案供保存與下載，不提供 PDF 解析或 RAG 檢索。
+即時共編需另外設定 Liveblocks，啟用後最新畫布保存於該服務，設定與切換注意事項見 [即時共編](docs/16-realtime-collaboration.md)。未啟用時採版本檢查保護輪流編輯。上傳的檔案供保存與下載，不提供 PDF 解析或 RAG 檢索。
 
 ## 技術與目錄
 
@@ -33,6 +33,7 @@ backend/server/     驗證、權限、持久化、檔案與服務邏輯
 backend/src/db/     Drizzle schema 與 Neon client
 backend/drizzle/    migration、journal 與 schema snapshots
 e2e/               Playwright 瀏覽器測試
+packages/collaboration/ 前後端共用 Yjs 畫布模型
 scripts/           測試入口、環境／密鑰／資料庫隔離檢查
 docs/              現行設定、部署、防護與驗收文件
 ```

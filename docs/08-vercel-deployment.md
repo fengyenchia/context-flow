@@ -74,7 +74,7 @@ NEXT_PUBLIC_API_BASE_URL=https://api.context-flow.fengyenchia.com/api
 - `RESEND_API_KEY=re_...`（只放 backend，不要加 `NEXT_PUBLIC_`）
 - `EMAIL_FROM=ContextFlow <noreply@fengyenchia.com>`（寄件網域必須先在 Resend 驗證）
 
-Backend production 至少需要 JWT secrets、`DATABASE_URL`、API Key encryption key 與寄信設定；檔案功能另需 R2。Liveblocks 與 Inngest 不屬於目前必要設定。
+Backend production 至少需要 JWT secrets、`DATABASE_URL`、API Key encryption key 與寄信設定；檔案功能另需 R2。即時共編另需 Backend 的 `LIVEBLOCKS_SECRET_KEY` 及 `COLLABORATION_ENABLED=true`，切換與驗收見 [即時共編](16-realtime-collaboration.md)。Inngest 不是目前必要設定。
 
 Backend 需填的變數名稱（值從本機安全複製，沿用已有加密 key 才能解密既有 Gemini Key）：`DATABASE_URL`、`JWT_ACCESS_SECRET`、`JWT_REFRESH_SECRET`、`USER_API_KEY_ENCRYPTION_KEY`、`RESEND_API_KEY`、`EMAIL_FROM`、`R2_ACCOUNT_ID`、`R2_BUCKET_NAME`、`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`、`FRONTEND_URL`、`PUBLIC_APP_URL`、`GEMINI_MODEL`（沿用目前值）、`DATA_MODE=neon`、`ENABLE_EXPERIMENTAL_COREPACK=1`。`NODE_ENV` 由 Vercel 正式 build/runtime 提供即可，不必手動覆寫。
 

@@ -15,7 +15,7 @@ export function tourSteps(stage: TourStage, readOnly: boolean): Step[] {
     { target: '[data-canvas-area="diverge"] .canvas-grid', title: '在這裡發散想法', content: '把問題、假設與不同方案放在發散思考區。星號可標記重要想法；AI 收斂會參考這些節點與連線，不只看專案名稱。' },
     { target: '[data-tour="assistant"]', title: '用 AI 延伸思考', content: '先在工作區側欄「AI Key」設定自己的 Gemini Key。選取發散節點可針對它提問；回覆按「產生節點」，檢查預覽後才會加入畫布。' },
     { target: '[data-canvas-area="converge"] .canvas-grid', title: '從發散整理成結論', content: '「整理成結論」主要依據發散節點、連線及重要標記，資料架構作背景。請檢查來源與結論；重新產生會替換前一批 AI 收斂節點。' },
-    { target: '[data-tour="canvas-save"]', title: '等「已儲存」再離開', content: '修改會自動儲存。失敗時保持頁面開啟，恢復網路再按重試；遇到雙分頁衝突，先複製未儲存內容再重載，不會自動合併。' },
+    { target: '[data-tour="canvas-save"]', title: '等「已儲存」再離開', content: '修改會自動儲存；共編模式顯示「已同步」。離線時保持頁面開啟，恢復連線後才會合併或重試；未啟用共編而遇到版本衝突時，先備份未儲存內容再重載。' },
     { target: '[data-tour="canvas-export"]', title: '匯出 PDF 或 PNG', content: '先展開三個畫布區域。PDF 會開列印視窗，選「另存為 PDF」；PNG 下載的是分區圖片 ZIP，解壓縮後閱讀。' },
     { target: '[data-tour-replay="canvas"]', title: '開始整理你的畫布', content: '這個按鈕可以重新看教學。需要詳細步驟時，開啟完整手冊。教學不會新增節點、變更你的內容或呼叫 AI。' },
   ];

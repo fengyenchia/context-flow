@@ -17,6 +17,7 @@ const patterns = [
   ['github-token', /(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,})/],
   ['aws-access-key', /(?:AKIA|ASIA)[A-Z0-9]{16}/],
   ['resend-key', /\bre_[A-Za-z0-9]{24,}\b/],
+  ['liveblocks-secret', /\bsk_(?:live|test|prod)_[A-Za-z0-9]{32,}\b/],
   ['postgres-credential', /postgres(?:ql)?:\/\/[^\s:/'"]+:[^\s@/'"]{16,}@[^\s/'"]+/],
 ];
 let risks = 0;
