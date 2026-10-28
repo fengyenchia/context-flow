@@ -38,7 +38,7 @@ PNG 測試檢查 ZIP 分片、尺寸、節點底色、文字像素及缺圖處�
 - 瀏覽器測試自動啟動前端 `127.0.0.1:3100`、後端 `127.0.0.1:3101`；埠須未被使用。
 - 測試使用獨立 `.next-e2e` 建置，覆蓋本機資料庫、R2、寄信及初始管理員設定，不使用正式帳號或資源。
 - API 測試使用記憶體資料、郵件、Gemini 及 Liveblocks SDK 替身，不發出真實寄信、雲端共編或付費 AI 請求。測試啟動器清空 Liveblocks 密鑰並停用共編旗標，個別共編測試才注入替身。
-- 備份 API 測試用官方 Webhook 簽章驗證器與真正的 Yjs 文件，R2／Liveblocks 使用替身；檢查跨專案隔離、角色、重送、失敗重試、損壞內容、附件副本及還原交易回滾。真實服務設定與交付驗收見 [畫布備份](17-canvas-backups.md)。
+- 備份 API 測試用官方 Webhook 簽章驗證器與真正的 Yjs 文件，R2／Liveblocks／Inngest 使用替身；檢查跨專案隔離、角色、失敗重試、附件還原、去重、15 分鐘間隔、50 份／30 天限制及安全清理。單元測試另驗證延後與每日排程；`node scripts/test-db.mjs --collaboration-only` 同時檢查共編與備份的 Neon 跨連線鎖，不執行 migration 或修改應用資料表。真實服務設定與交付驗收見 [畫布備份](17-canvas-backups.md)。
 - 專案邀請 API 測試檢查期限、撤銷、聯集授權與工作區／專案隔離。Neon 測試另驗證新資料表 migration、獨立重新載入後的角色／撤銷保存；正式啟用步驟見 [專案邀請](18-project-invitations.md)。
 - 瀏覽器測試從開發郵件日誌取得驗證連結，再操作正常的 Email 驗證頁。
 - `pnpm test:db` 另讀取 `backend/.env.test.local` 的 `TEST_DATABASE_URL`，只允許獨立、可丟棄的 Neon 分支。

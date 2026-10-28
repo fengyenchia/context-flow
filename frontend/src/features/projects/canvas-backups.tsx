@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { IconHistory } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
-import { captureCanvasBackup, listCanvasBackups, restoreCanvasBackup, type CanvasBackup } from '@/lib/api/projects';
+import { captureCanvasBackup, listCanvasBackups, restoreCanvasBackup, type CanvasBackup, type CanvasBackupPolicy } from '@/lib/api/projects';
 
 export function CanvasBackups({ projectId, synced }: { projectId: string; synced: boolean }) {
   const router = useRouter();
@@ -17,18 +17,20 @@ export function CanvasBackups({ projectId, synced }: { projectId: string; synced
   const [selected, setSelected] = useState<CanvasBackup | null>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [policy, setPolicy] = useState<CanvasBackupPolicy>();
   async function load(next?: string) {
     setBusy(true); setError('');
     try {
       const result = await listCanvasBackups(projectId, next);
       setBackups(previous => next ? [...previous, ...result.backups] : result.backups);
       setCursor(result.cursor); setLoaded(true);
+      setPolicy(result.policy);
     } catch (error) { setError(error instanceof Error ? error.message : '無法讀取備份'); }
     finally { setBusy(false); }
   }
   async function capture() {
     setBusy(true); setError(''); setMessage('');
-    try { await captureCanvasBackup(projectId); setMessage('已備份雲端畫布'); await load(); }
+    try { const result = await captureCanvasBackup(projectId); setMessage(result.skipped === 'unchanged' ? '內容未變更，沿用最近的備份' : '已備份雲端畫布'); await load(); }
     catch (error) { setError(error instanceof Error ? error.message : '備份失敗'); }
     finally { setBusy(false); }
   }
@@ -49,7 +51,7 @@ export function CanvasBackups({ projectId, synced }: { projectId: string; synced
     <Modal open={open} onClose={() => setOpen(false)} title={selected ? '還原備份' : '畫布備份'} dismissible={!busy}
       description={selected ? '將在同一工作區建立新專案，原畫布保留。' : '自動保存雲端版本；尚未同步的修改不會包含在內。'}>
       {error && <p role="alert" className="mb-4 text-sm text-destructive">{error}</p>}
-      {message && <p role="status" className="mb-4 text-sm">{message}</p>}
+      {message && !busy && <p role="status" className="mb-4 text-sm">{message}</p>}
       {selected ? <>
         <p className="text-sm">備份時間：{new Date(selected.capturedAt).toLocaleString('zh-TW')}</p>
         <p className="mt-2 text-sm text-muted">節點、連線、分色、資料池與對話會一起還原，上傳檔案會從備份複製到新專案。</p>
@@ -58,6 +60,7 @@ export function CanvasBackups({ projectId, synced }: { projectId: string; synced
           <Button disabled={busy} onClick={() => void restore()}>{busy ? '還原中…' : '還原為新專案'}</Button>
         </div>
       </> : <>
+        {policy && <p className="mb-4 text-sm text-muted">保留最近 {policy.maxVersions} 份，最長 {policy.maxAgeDays} 天；自動備份間隔至少 {policy.autoIntervalMinutes} 分鐘。</p>}
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <Button disabled={busy || !synced} onClick={() => void capture()}>立即備份</Button>
           <Button variant="outline" disabled={busy} onClick={() => void load()}>重新整理</Button>

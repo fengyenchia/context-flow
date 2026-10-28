@@ -52,6 +52,15 @@ test('staged scan checks the index rather than unstaged working changes', (t) =>
   f.safeFailure(f.scan('--staged'), token);
 });
 
+test('matches both local Inngest keys without printing them', (t) => {
+  const f = fixture(t); mkdirSync(join(f.cwd, 'backend'));
+  const event = ['fixture', 'event', 'private', 'value'].join('-');
+  const signing = ['fixture', 'signing', 'private', 'value'].join('-');
+  f.write('backend/.env.local', `INNGEST_EVENT_KEY=${event}\nINNGEST_SIGNING_KEY=${signing}\n`);
+  f.write('.gitignore', '.env*\n');
+  for (const key of [event, signing]) { f.write('source.txt', key); f.safeFailure(f.scan(), key); }
+});
+
 test('finds a removed token in committed history', (t) => {
   const f = fixture(t);
   const token = ['AI', 'za', 'X'.repeat(35)].join('');

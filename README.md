@@ -23,7 +23,7 @@
 
 即時共編需另外設定 Liveblocks，啟用後最新畫布保存於該服務，設定與切換注意事項見 [即時共編](docs/16-realtime-collaboration.md)。未啟用時採版本檢查保護輪流編輯。上傳的檔案供保存與下載，不提供 PDF 解析或 RAG 檢索。
 
-畫布歷史備份需另外設定私人 R2 bucket 與 Webhook，見 [畫布備份與還原](docs/17-canvas-backups.md)。Neon 備份繼續保護帳號、工作區及權限，不取代共編畫布備份。
+畫布歷史備份需另外設定私人 R2 bucket 與 Webhook；啟用限制與清理另需 Inngest，保留每專案最近 50 份、最長 30 天，自動備份間隔至少 15 分鐘，未被引用的附件副本才會清除。設定見 [畫布備份與還原](docs/17-canvas-backups.md)。Neon 備份繼續保護帳號、工作區及權限，不取代共編畫布備份。
 
 單一專案邀請需先套用 migration 0005，再設定 Backend `PROJECT_INVITES_ENABLED=true`。期限限制接受邀請，已加入者保留權限直到撤銷；設定及安全規則見 [專案邀請連結](docs/18-project-invitations.md)。
 

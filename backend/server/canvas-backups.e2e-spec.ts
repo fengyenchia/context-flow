@@ -1,4 +1,4 @@
-import { createHmac } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { gzipSync, gunzipSync } from 'node:zlib';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
@@ -8,8 +8,10 @@ import { POST as webhook } from '../app/api/webhooks/liveblocks/route';
 import { state } from './state';
 import { createSession } from './auth';
 import { collectionNames } from './persistence';
+import { backupProjectPage, backupReferences, captureCanvasBackup, cleanupCanvasBackups, finishBackupCleanup, prepareBackupCleanup, restoreCanvasBackup } from './canvas-backups';
 
-const { cloud, objects, failures, calls } = vi.hoisted(() => ({ cloud: new Map<string, Uint8Array>(), objects: new Map<string, { bytes: Uint8Array; date: Date }>(), failures: new Set<string>(), calls: vi.fn() }));
+const { cloud, objects, failures, calls, queued } = vi.hoisted(() => ({ cloud: new Map<string, Uint8Array>(), objects: new Map<string, { bytes: Uint8Array; date: Date }>(), failures: new Set<string>(), calls: vi.fn(), queued: vi.fn() }));
+vi.mock('./inngest-client', () => ({ inngest: { send: queued } }));
 vi.mock('@liveblocks/node', async original => ({
   ...await original<typeof import('@liveblocks/node')>(),
   Liveblocks: class {
@@ -21,12 +23,13 @@ vi.mock('@aws-sdk/client-s3', async original => ({
   ...await original<typeof import('@aws-sdk/client-s3')>(),
   S3Client: class {
     async send(command: { constructor: { name: string }; input: Record<string, unknown> }) {
-      const { Bucket, Key, Body, Prefix, MaxKeys, ContinuationToken, CopySource, IfNoneMatch } = command.input;
+      const { Bucket, Key, Body, Prefix, MaxKeys, ContinuationToken, CopySource, IfNoneMatch, Delimiter } = command.input;
       const name = command.constructor.name;
       calls(name, command.input);
       if (failures.has(name)) throw new Error('storage offline');
       const key = `${Bucket}/${Key}`;
       const missing = () => { throw { $metadata: { httpStatusCode: 404 } }; };
+      if (name === 'DeleteObjectCommand') { objects.delete(key); return {}; }
       if (name === 'PutObjectCommand') {
         if (IfNoneMatch === '*' && objects.has(key)) throw { $metadata: { httpStatusCode: 412 } };
         objects.set(key, { bytes: new Uint8Array(Body as Uint8Array), date: new Date() }); return {};
@@ -42,7 +45,12 @@ vi.mock('@aws-sdk/client-s3', async original => ({
       if (name === 'ListObjectsV2Command') {
         const entries = [...objects].filter(([id]) => id.startsWith(`${Bucket}/${Prefix}`)).sort(([a], [b]) => a.localeCompare(b));
         const start = Number(ContinuationToken || 0); const end = start + Number(MaxKeys);
-        return { Contents: entries.slice(start, end).map(([id, item]) => ({ Key: id.slice(String(Bucket).length + 1), LastModified: item.date, Size: item.bytes.length })), NextContinuationToken: end < entries.length ? String(end) : undefined };
+        if (failures.has('truncate')) return { Contents: [], IsTruncated: true };
+        if (Delimiter) {
+          const prefixes = [...new Set(entries.map(([id]) => id.slice(String(Bucket).length + 1).split('/').slice(0, 3).join('/') + '/'))];
+          return { CommonPrefixes: prefixes.slice(start, end).map(Prefix => ({ Prefix })), NextContinuationToken: end < prefixes.length ? String(end) : undefined };
+        }
+        return { Contents: entries.slice(start, end).map(([id, item]) => ({ Key: id.slice(String(Bucket).length + 1), LastModified: item.date, Size: item.bytes.length })), NextContinuationToken: end < entries.length ? String(end) : undefined, IsTruncated: end < entries.length };
       }
       throw new Error(`Unexpected storage command ${name}`);
     }
@@ -87,9 +95,156 @@ async function fixture() {
 }
 beforeEach(() => {
   for (const key of collectionNames) state[key].clear(); cloud.clear(); objects.clear(); failures.clear(); calls.mockClear();
+  queued.mockReset(); queued.mockResolvedValue({ ids: ['queued'] });
   for (const [key, value] of Object.entries({ COLLABORATION_ENABLED: 'true', CANVAS_BACKUP_ENABLED: 'true', LIVEBLOCKS_SECRET_KEY: 'sk_test_fixture', LIVEBLOCKS_WEBHOOK_SECRET: secret, CANVAS_BACKUP_BUCKET_NAME: 'backups', R2_BUCKET_NAME: 'uploads', R2_ACCOUNT_ID: 'fixture', R2_ACCESS_KEY_ID: 'fixture', R2_SECRET_ACCESS_KEY: 'fixture' })) vi.stubEnv(key, value);
 });
-afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
+
+describe('bounded backup retention and safe attachment cleanup', () => {
+  beforeEach(() => {
+    vi.stubEnv('CANVAS_BACKUP_RETENTION_ENABLED', 'true');
+    vi.stubEnv('INNGEST_EVENT_KEY', 'fixture-event-key'); vi.stubEnv('INNGEST_SIGNING_KEY', 'fixture-signing-key');
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2026-10-28T04:00:00Z'));
+  });
+  const advance = (ms: number) => vi.setSystemTime(new Date(Date.now() + ms));
+  const manifestKeys = (id: string) => [...objects.keys()].filter(key => key.startsWith(`backups/canvas-backups/v1/${id}/`));
+  const change = (room: string, snapshot: Parameters<typeof seedDocument>[0]) => { const doc = seedDocument(snapshot); cloud.set(room, Y.encodeStateAsUpdate(doc)); doc.destroy(); };
+
+  it('deduplicates logical content even if Yjs clocks and upload metadata changed', async () => {
+    const f = await fixture(); const first = await captureCanvasBackup(f.project.id);
+    change(f.room, f.snapshot); advance(60_000);
+    state.documents.get(f.fileId)!.updatedAt = new Date();
+    const duplicate = await captureCanvasBackup(f.project.id);
+    expect(duplicate).toMatchObject({ id: first.id, skipped: 'unchanged' });
+    expect(manifestKeys(f.project.id)).toHaveLength(1);
+    expect(calls.mock.calls.filter(([name]) => name === 'CopyObjectCommand')).toHaveLength(1);
+    expect(queued).not.toHaveBeenCalled();
+  });
+  it('queues the last changed document until the 15-minute interval and backs it up without another edit', async () => {
+    const f = await fixture(); const first = await captureCanvasBackup(f.project.id);
+    advance(5 * 60_000); const changed = structuredClone(f.snapshot); changed.nodes[0].data.nodeContent = '最後一次修改'; change(f.room, changed);
+    for (const id of ['second', 'third']) expect((await captureCanvasBackup(f.project.id, { id, updatedAt: new Date().toISOString() })).skipped).toBe('scheduled');
+    expect(manifestKeys(f.project.id)).toHaveLength(1);
+    const event = queued.mock.calls[0][0]; expect(event).toEqual(queued.mock.calls[1][0]);
+    expect(event.data.dueAt).toBe(new Date(Date.parse(first.capturedAt) + 15 * 60_000).toISOString());
+    vi.setSystemTime(new Date(Date.parse(event.data.dueAt) + 1));
+    const saved = await captureCanvasBackup(f.project.id, { id: event.id, updatedAt: new Date().toISOString() });
+    expect(saved.skipped).toBeUndefined(); expect(manifestKeys(f.project.id)).toHaveLength(2);
+    const restored = await restoreCanvasBackup(f.project.id, saved.id, f.owner.id);
+    expect(state.canvasSnapshots.get(restored.id)!.nodes[0]).toMatchObject({ data: { nodeContent: '最後一次修改' } });
+  });
+  it('allows a changed manual backup immediately and applies the normal interval after it', async () => {
+    const f = await fixture(); await captureCanvasBackup(f.project.id); advance(60_000);
+    const changed = structuredClone(f.snapshot); changed.summary = '手動重要版本'; change(f.room, changed);
+    const manual = await captureCanvasBackup(f.project.id); expect(manual.skipped).toBeUndefined();
+    advance(60_000); changed.summary = '後續修改'; change(f.room, changed);
+    const auto = await captureCanvasBackup(f.project.id, { id: 'auto', updatedAt: new Date().toISOString() });
+    expect(auto.nextBackupAt).toBe(new Date(Date.parse(manual.capturedAt) + 15 * 60_000).toISOString());
+    expect(manifestKeys(f.project.id)).toHaveLength(2);
+  });
+  it('retains at most 50 manual/automatic versions and rejects restoring a pruned ID', async () => {
+    const f = await fixture(); const first = await captureCanvasBackup(f.project.id);
+    for (let i = 1; i < 55; i++) { advance(60_000); const next = structuredClone(f.snapshot); next.summary = `版本 ${i}`; change(f.room, next); await captureCanvasBackup(f.project.id); }
+    expect(manifestKeys(f.project.id)).toHaveLength(50);
+    await expect(restoreCanvasBackup(f.project.id, first.id, f.owner.id)).rejects.toMatchObject({ status: 404 });
+    expect(objects.has(`backups/canvas-backups/files/${f.project.id}/${f.fileId}`)).toBe(true);
+  });
+  it('protects attachments referenced by older retained versions, then removes only unused backup copies', async () => {
+    const f = await fixture(); const first = await captureCanvasBackup(f.project.id);
+    advance(2 * 86400_000); change(f.room, { nodes: [], edges: [], resources: [] }); await captureCanvasBackup(f.project.id);
+    objects.delete(`uploads/projects/${f.project.id}/${f.fileId}`);
+    await cleanupCanvasBackups(f.project.id);
+    const fileKey = `backups/canvas-backups/files/${f.project.id}/${f.fileId}`;
+    expect(objects.has(fileKey)).toBe(true);
+    const restored = await restoreCanvasBackup(f.project.id, first.id, f.owner.id);
+    const restoredFile = [...state.documents.values()].find(item => item.projectId === restored.id)!;
+    advance(29 * 86400_000); await cleanupCanvasBackups(f.project.id);
+    expect(manifestKeys(f.project.id)).toHaveLength(1); expect(objects.has(fileKey)).toBe(false);
+    expect(objects.has(`uploads/${restoredFile.storageKey}`)).toBe(true);
+    expect(calls.mock.calls.filter(([name, input]) => name === 'DeleteObjectCommand' && input.Bucket === 'uploads')).toHaveLength(0);
+  });
+  it('protects the current cloud references and recent incomplete copies, and isolates other projects', async () => {
+    const f = await fixture(); await captureCanvasBackup(f.project.id);
+    const recentKey = `backups/canvas-backups/files/${f.project.id}/recent-copy`;
+    const otherKey = 'backups/canvas-backups/files/other-project/old-copy';
+    advance(31 * 86400_000); objects.set(recentKey, { bytes: Buffer.from('recent'), date: new Date() }); objects.set(otherKey, { bytes: Buffer.from('other'), date: new Date(0) });
+    await cleanupCanvasBackups(f.project.id);
+    expect(manifestKeys(f.project.id)).toHaveLength(0);
+    expect(objects.has(`backups/canvas-backups/files/${f.project.id}/${f.fileId}`)).toBe(true);
+    expect(objects.has(recentKey)).toBe(true); expect(objects.has(otherKey)).toBe(true);
+    advance(25 * 3600_000); await cleanupCanvasBackups(f.project.id);
+    expect(objects.has(recentKey)).toBe(false); expect(objects.has(otherKey)).toBe(true);
+    expect(objects.has(`uploads/projects/${f.project.id}/${f.fileId}`)).toBe(true);
+  });
+  it('does not delete attachments after corrupt manifests, incomplete listings, cloud read or deletion failures', async () => {
+    const f = await fixture(); await captureCanvasBackup(f.project.id); advance(2 * 86400_000);
+    const orphan = `backups/canvas-backups/files/${f.project.id}/orphan-file`; objects.set(orphan, { bytes: Buffer.from('orphan'), date: new Date(0) });
+    const key = manifestKeys(f.project.id)[0], original = objects.get(key)!;
+    objects.set(key, { ...original, bytes: Buffer.from('corrupt') });
+    await expect(cleanupCanvasBackups(f.project.id)).rejects.toMatchObject({ status: 422 }); expect(objects.has(orphan)).toBe(true);
+    objects.set(key, original);
+    for (const failure of ['truncate', 'GetObjectCommand', 'cloud']) { failures.add(failure); await expect(cleanupCanvasBackups(f.project.id)).rejects.toBeDefined(); failures.clear(); expect(objects.has(orphan)).toBe(true); }
+    failures.add('DeleteObjectCommand'); advance(31 * 86400_000);
+    await expect(cleanupCanvasBackups(f.project.id)).rejects.toBeDefined(); expect(objects.has(orphan)).toBe(true); expect(objects.has(key)).toBe(true);
+    failures.clear(); await cleanupCanvasBackups(f.project.id); expect(objects.has(orphan)).toBe(false);
+  });
+  it('rechecks the inventory before a durable cleanup deletes files when a newer backup arrived', async () => {
+    const f = await fixture(); await captureCanvasBackup(f.project.id); advance(2 * 86400_000);
+    const orphan = `backups/canvas-backups/files/${f.project.id}/orphan-file`; objects.set(orphan, { bytes: Buffer.from('old'), date: new Date(0) });
+    const plan = await prepareBackupCleanup(f.project.id); const refs = await backupReferences(f.project.id, plan.ids);
+    const changed = structuredClone(f.snapshot); changed.summary = '新的備份'; change(f.room, changed); await captureCanvasBackup(f.project.id);
+    expect(await finishBackupCleanup(f.project.id, plan.ids, refs)).toMatchObject({ deletedFiles: 0, more: true }); expect(objects.has(orphan)).toBe(true);
+    const current = await prepareBackupCleanup(f.project.id);
+    await finishBackupCleanup(f.project.id, current.ids, await backupReferences(f.project.id, current.ids));
+    expect(objects.has(orphan)).toBe(false);
+  });
+  it('serializes simultaneous publishers and never acknowledges a deferred backup without a working queue', async () => {
+    const f = await fixture();
+    await Promise.all([captureCanvasBackup(f.project.id), captureCanvasBackup(f.project.id)]);
+    expect(manifestKeys(f.project.id)).toHaveLength(1);
+    advance(60_000); const changed = structuredClone(f.snapshot); changed.summary = '尚未排程'; change(f.room, changed);
+    queued.mockRejectedValueOnce(new Error('queue unavailable'));
+    await expect(captureCanvasBackup(f.project.id, { id: 'later', updatedAt: new Date().toISOString() })).rejects.toThrow('queue unavailable');
+    expect(manifestKeys(f.project.id)).toHaveLength(1);
+    vi.stubEnv('INNGEST_EVENT_KEY', '');
+    await expect(captureCanvasBackup(f.project.id, { id: 'later', updatedAt: new Date().toISOString() })).rejects.toMatchObject({ status: 503 });
+  });
+  it('includes deleted projects in the daily inventory and can finish large cleanup in bounded batches', async () => {
+    const f = await fixture(); await captureCanvasBackup(f.project.id);
+    const page = await backupProjectPage(); expect(page.projectIds).toContain(f.project.id);
+    state.projects.delete(f.project.id); state.documents.delete(f.fileId); advance(31 * 86400_000);
+    for (let i = 0; i < 105; i++) objects.set(`backups/canvas-backups/files/${f.project.id}/orphan-${i}`, { bytes: Buffer.from('old'), date: new Date(0) });
+    const first = await cleanupCanvasBackups(f.project.id); expect(first.deletedFiles).toBe(100); expect(first.more).toBe(true);
+    expect((await backupProjectPage()).projectIds).not.toContain(f.project.id);
+    expect((await backupProjectPage(undefined, true)).projectIds).toContain(f.project.id);
+    const last = await cleanupCanvasBackups(f.project.id); expect(last.more).toBe(false);
+    expect([...objects.keys()].filter(key => key.startsWith(`backups/canvas-backups/files/${f.project.id}/`))).toHaveLength(0);
+  });
+  it('keeps the full interval when storage timestamps lose milliseconds', async () => {
+    advance(789); const f = await fixture(); const first = await captureCanvasBackup(f.project.id);
+    const manifest = objects.get(manifestKeys(f.project.id)[0])!;
+    manifest.date = new Date(Math.floor(manifest.date.getTime() / 1000) * 1000);
+    advance(60_000); const changed = structuredClone(f.snapshot); changed.summary = '最後變更'; change(f.room, changed);
+    await captureCanvasBackup(f.project.id, { id: 'rounded-time', updatedAt: new Date().toISOString() });
+    expect(queued).toHaveBeenCalledWith(expect.objectContaining({ data: { projectId: f.project.id, dueAt: new Date(Date.parse(first.capturedAt) + 900_000).toISOString() } }));
+  });
+  it('refuses production cleanup when database configuration is missing', async () => {
+    const f = await fixture(); await captureCanvasBackup(f.project.id); advance(31 * 86400_000);
+    vi.stubEnv('NODE_ENV', 'production'); calls.mockClear();
+    await expect(cleanupCanvasBackups(f.project.id)).rejects.toThrow('production database');
+    expect(calls.mock.calls.some(([name]) => name === 'DeleteObjectCommand')).toBe(false);
+  });
+  it('preserves copies if a checksummed manifest omits a referenced attachment', async () => {
+    const f = await fixture(); await captureCanvasBackup(f.project.id); advance(2 * 86400_000);
+    const manifest = objects.get(manifestKeys(f.project.id)[0])!;
+    const payload = JSON.parse(gunzipSync(manifest.bytes).toString()); delete payload.sha256; payload.documents = [];
+    manifest.bytes = gzipSync(JSON.stringify({ ...payload, sha256: createHash('sha256').update(JSON.stringify(payload)).digest('hex') }));
+    const changed = structuredClone(f.snapshot); changed.nodes = []; changed.resources = []; change(f.room, changed);
+    calls.mockClear(); await expect(cleanupCanvasBackups(f.project.id)).rejects.toMatchObject({ status: 422 });
+    expect(objects.has(`backups/canvas-backups/files/${f.project.id}/${f.fileId}`)).toBe(true);
+    expect(calls.mock.calls.some(([name]) => name === 'DeleteObjectCommand')).toBe(false);
+  });
+});
+afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); vi.useRealTimers(); });
 
 describe('canvas backup and restore', () => {
   it('verifies real webhook signatures, copies files once, and makes replay idempotent', async () => {

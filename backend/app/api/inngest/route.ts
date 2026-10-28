@@ -1,4 +1,7 @@
 import { serve } from 'inngest/next';
-import { documentIndexing, inngest } from '@/server/inngest';
+import { canvasBackupCleanup, canvasBackupFlush, dailyCanvasBackupCleanup, documentIndexing, inngest } from '@/server/inngest';
 
-export const { GET, POST, PUT } = serve({ client: inngest, functions: [documentIndexing] });
+export const runtime = 'nodejs';
+export const maxDuration = 60;
+
+export const { GET, POST, PUT } = serve({ client: inngest, functions: [documentIndexing, canvasBackupFlush, canvasBackupCleanup, dailyCanvasBackupCleanup] });

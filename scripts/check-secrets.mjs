@@ -8,7 +8,7 @@ const secrets = new Set();
 for (const path of ['backend/.env', 'backend/.env.local', 'backend/.env.test.local', 'frontend/.env.local']) {
   if (!existsSync(path)) continue;
   for (const [key, value] of Object.entries(parseEnv(readFileSync(path, 'utf8')))) {
-    if (/SECRET|TOKEN|PASSWORD|DATABASE_URL|API_KEY|ENCRYPTION_KEY|ACCESS_KEY/i.test(key) && value.length >= 16) secrets.add(value);
+    if (/SECRET|TOKEN|PASSWORD|DATABASE_URL|API_KEY|ENCRYPTION_KEY|ACCESS_KEY|INNGEST_(?:EVENT|SIGNING)_KEY/i.test(key) && value.length >= 16) secrets.add(value);
   }
 }
 const patterns = [

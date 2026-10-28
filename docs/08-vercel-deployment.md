@@ -74,7 +74,7 @@ NEXT_PUBLIC_API_BASE_URL=https://api.context-flow.fengyenchia.com/api
 - `RESEND_API_KEY=re_...`（只放 backend，不要加 `NEXT_PUBLIC_`）
 - `EMAIL_FROM=ContextFlow <noreply@fengyenchia.com>`（寄件網域必須先在 Resend 驗證）
 
-Backend production 至少需要 JWT secrets、`DATABASE_URL`、API Key encryption key 與寄信設定；檔案功能另需 R2。即時共編另需 Backend 的 `LIVEBLOCKS_SECRET_KEY` 及 `COLLABORATION_ENABLED=true`，切換與驗收見 [即時共編](16-realtime-collaboration.md)。Inngest 不是目前必要設定。
+Backend production 至少需要 JWT secrets、`DATABASE_URL`、API Key encryption key 與寄信設定；檔案功能另需 R2。即時共編另需 Backend 的 `LIVEBLOCKS_SECRET_KEY` 及 `COLLABORATION_ENABLED=true`，切換與驗收見 [即時共編](16-realtime-collaboration.md)。備份限制與自動清理啟用時需要 Inngest，其他功能不需設定。
 
 畫布自動備份另需 `CANVAS_BACKUP_ENABLED=true`、`CANVAS_BACKUP_BUCKET_NAME` 與 `LIVEBLOCKS_WEBHOOK_SECRET`，並在 Liveblocks 訂閱 `ydocUpdated`；私人 bucket、權限與驗收見 [畫布備份](17-canvas-backups.md)。不需要 migration，Frontend 無需新增變數。
 
@@ -96,7 +96,7 @@ Frontend 只填 `NEXT_PUBLIC_API_BASE_URL` 和 `ENABLE_EXPERIMENTAL_COREPACK=1`�
 3. 建立兩個使用者，測試邀請與 viewer 權限。
 4. 測試 Gemini Key 儲存與 AI request。
 5. 測試 R2 CORS 與預簽 URL。
-6. 依上線清單驗證離線重試、雙分頁衝突及 PNG/PDF 匯出；不需要同步未使用的 Inngest 工作。
+6. 依上線清單驗證離線重試、雙分頁衝突及 PNG/PDF 匯出；若啟用備份限制，另依備份指南同步 Inngest 的延後備份與每日清理工作。
 7. 檢查 Vercel logs 沒有印出 JWT、refresh token、Gemini Key 或 database URL。
 
 ## 自訂網域與 Cookie

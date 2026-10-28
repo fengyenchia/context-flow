@@ -10,7 +10,7 @@ Webhook 通知有節流，因此不是每次按鍵都會產生一份備份，也
 
 ## 服務設定
 
-不需要 migration、不新增 Frontend 變數、不需 Inngest 或額外排程。`DATABASE_URL` 保持原本 production 連線。
+基本備份只需要 R2 與 Liveblocks Webhook；保留限制、自動清理及延後備份另外使用 Inngest。不需要 migration，不新增 Frontend 變數。`DATABASE_URL` 保持原本 production 連線。
 
 1. 在現有 Cloudflare R2 帳號建立獨立 bucket，例如 `context-flow-canvas-backups`。關閉公開存取，不啟用 `r2.dev` 或公開自訂網域。備份不經瀏覽器，不需要 CORS。
 2. Backend 的 R2 API token 需能讀寫原檔案 bucket 與備份 bucket，包含列出物件及跨 bucket 複製。若原 token 只授權一個 bucket，需擴充範圍或更換 token；只更新 Backend 的 R2 credentials，不貼到對話或 Git。
@@ -31,6 +31,17 @@ Webhook 通知有節流，因此不是每次按鍵都會產生一份備份，也
 
 本機／Preview 使用獨立測試 bucket、Liveblocks 專案與 Webhook secret，不共用正式備份。
 
+### 啟用限制與排程
+
+1. 先部署包含專案備份鎖的新 Backend，維持 `CANVAS_BACKUP_RETENTION_ENABLED=false`。等舊部署的請求結束，不再讓舊版 writer 或舊版 webhook endpoint 寫入同一 bucket，才啟用清理。
+2. 在 Inngest 建立正式環境的 app；將 **Event key**、**Signing key** 分別填入 Vercel Backend / Production 的 `INNGEST_EVENT_KEY`、`INNGEST_SIGNING_KEY`，皆設為敏感值。不要將 key 貼到對話或 Git。
+3. 重新部署 Backend，在 Inngest 同步 `https://你的正式Backend網域/api/inngest`。確認列出 `canvas-backup-flush`、`canvas-backup-cleanup`、`daily-canvas-backup-cleanup` 三個工作。若有 Deployment Protection／WAF，允許 Inngest 存取這個路徑；執行請求仍須通過 SDK 簽章驗證。
+4. 移除備份 bucket 上自行設定的版本／附件到期刪除規則，讓程式統一判斷引用。不要對 `canvas-backups/files/` 或整個 bucket 設定到期刪除。
+5. Backend 設定 `CANVAS_BACKUP_RETENTION_ENABLED=true`，重新部署，再同步 Inngest app。這時會開始依以下規則清除舊版本，啟用前請確認需要長期保存的歷史已另行保存。
+6. 驗收：立即備份兩次且內容未變，第二次應提示沿用最近備份；修改後在 15 分鐘內停手，Inngest 的 flush 工作應等到間隔結束後擷取最後內容，不需要再修改一次。確認每日清理工作執行成功，再選擇保留中的舊版還原成新專案，檢查附件仍可使用。
+
+排程時間為每日 UTC 03:17（台灣 11:17）。Liveblocks 失敗交付與 Inngest 失敗工作應修復後重試。停用保留旗標會停止限制與清理，但基本 Webhook 備份仍會持續新增。Inngest 未設定或排程送出失敗時會回報失敗，避免把漏掉最後一次變更當作成功。
+
 ## 還原
 
 1. 以工作區 owner 或 admin 開啟專案，按「畫布備份」。editor／viewer 不提供備份或還原操作。
@@ -45,8 +56,12 @@ Webhook 通知有節流，因此不是每次按鍵都會產生一份備份，也
 ## 保留與容量
 
 - 畫布版本路徑：`canvas-backups/v1/<projectId>/`；附件副本：`canvas-backups/files/<projectId>/<documentId>`。同一附件 ID 只複製一次；各次畫布版本獨立保存。
-- 預設不自動刪除歷史。可對 **`canvas-backups/v1/`** 設 R2 lifecycle，例如保留 30 天；不要將相同期限套到 `canvas-backups/files/`，否則較新快照仍引用的附件可能提早消失。附件清理需先確認沒有保留中的版本引用。
-- 刪除應用內專案不會立刻刪除備份。備份含使用者內容，管理者需依資料保留政策處理容量、過期與刪除要求。R2 私人備份仍會產生儲存及 API 操作費用。
+- 啟用保留旗標後，每個專案保留**最近 50 份，最長 30 天**，先達到的限制生效。頻繁手動備份可能讓歷史不足 30 天。手動與自動版本一起計算；相同內容沿用最近版本，不更新它的保存時間。
+- 自動備份間隔至少 15 分鐘；間隔內的修改交給持久排程，在到期後讀取最新雲端畫布。手動「立即備份」可略過間隔，但仍受去重、數量與天數限制。沒有修改不會固定每 15 分鐘新增一份；很久沒有編輯的專案仍會由每日工作清理到期版本。
+- 建立／列出備份時會修剪版本；每日工作也掃描不活躍、已刪除與只剩附件副本的專案路徑。每批最多刪除 100 個版本或 100 個附件副本，剩餘工作繼續排隊。每日清理、重試或大量積存可能讓實體物件晚於期限移除；還原只提供保留範圍內的版本。
+- 附件副本必須同時不被任何保留版本及現存雲端畫布引用，而且已存在超過 24 小時，才能刪除。共用附件會保留到最後一份引用版本到期。新備份只複製畫布實際引用且完成上傳的檔案；舊備份清單中的附件照樣保護。原上傳 bucket 與還原後新專案的檔案不在清理範圍內。
+- 清理先完整列舉及校驗保留版本，遇到損壞備份、分頁不完整、讀取失敗或無法確認雲端引用時停止附件刪除。跨執行個體以 Neon 專案交易鎖協調備份、還原與清理；讀取清單期間若新增版本，重新規劃後再清理。
+- 刪除應用內專案不會立刻清空備份，仍依相同政策到期。50 份是每專案版本數上限，不是整個帳號的容量或費用上限；附件大小、專案數與 API 次數仍影響 R2 用量。
 - 單份 Yjs 文件上限 32 MiB，含附件清單的未壓縮備份上限 64 MiB。附件本體沿用每檔 20 MB 上傳限制，跨 bucket 複製，不經 Vercel 回傳給瀏覽器。
 - 大量附件首次備份／還原可能超過 Vercel 請求時間；會回報失敗，已複製的備份附件可在重試時沿用。請以符合實際大小的測試專案確認平台限制，失敗時查看服務交付紀錄。
 
@@ -54,12 +69,14 @@ Webhook 通知有節流，因此不是每次按鍵都會產生一份備份，也
 
 ```sh
 pnpm test:e2e:api
+pnpm test
+node scripts/test-db.mjs --collaboration-only
 pnpm exec playwright test e2e/canvas-backups.spec.ts e2e/collaboration.spec.ts
 pnpm test:secrets
 ```
 
-API 測試使用官方簽章驗證器、真正的 Yjs 文件及隔離的雲端替身，涵蓋簽章／過期請求、重複事件、服務失敗重試、權限、不同專案隔離、分頁、損壞資料、三區與附件還原、原畫布保留及資料庫失敗回滾。瀏覽器測試涵蓋清單／立即備份／還原失敗重試、確認步驟、Esc 與焦點回復、跳轉新專案及 viewer 不顯示入口。
+API 測試使用官方簽章驗證器、真正的 Yjs 文件及隔離的雲端替身，涵蓋簽章／過期請求、權限、還原、內容去重、15 分鐘延後擷取、50 份／30 天限制、共用附件、雲端引用保護、24 小時寬限、清理競爭及失敗時保留附件。單元測試涵蓋持久排程、分批讀取／清理、延續工作及鎖定失敗；隔離 Neon 測試確認獨立連線的互斥與失敗釋放，不修改應用資料表。瀏覽器測試涵蓋失敗重試、政策提示、重複備份不新增、確認步驟、Esc 與焦點回復、跳轉新專案及 viewer 不顯示入口。
 
 自動測試不會讀寫正式 Neon、R2 或 Liveblocks。正式服務的 Webhook 交付、跨 bucket 權限及真實備份還原須在完成上述設定後確認。
 
-參考：[Liveblocks Webhooks](https://liveblocks.io/docs/platform/webhooks)、[Yjs 備份方式](https://liveblocks.io/docs/guides/can-i-use-my-own-database-with-yjs)、[R2 S3 相容性](https://developers.cloudflare.com/r2/api/s3/api/)。
+參考：[Liveblocks Webhooks](https://liveblocks.io/docs/platform/webhooks)、[Yjs 備份方式](https://liveblocks.io/docs/guides/can-i-use-my-own-database-with-yjs)、[R2 S3 相容性](https://developers.cloudflare.com/r2/api/s3/api/)、[Inngest 延後執行](https://www.inngest.com/docs/durable-execution/primitives/step-sleepuntil)。

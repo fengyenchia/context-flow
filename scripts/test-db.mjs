@@ -43,6 +43,9 @@ const env = {
   CANVAS_BACKUP_ENABLED: "false",
   CANVAS_BACKUP_BUCKET_NAME: "",
   PROJECT_INVITES_ENABLED: "false",
+  CANVAS_BACKUP_RETENTION_ENABLED: "false",
+  INNGEST_EVENT_KEY: "",
+  INNGEST_SIGNING_KEY: "",
   DB_RESTART_PROBE: "",
   RESEND_API_KEY: "",
   EMAIL_FROM: "",
@@ -52,7 +55,7 @@ const env = {
   R2_SECRET_ACCESS_KEY: "",
 };
 const commands = process.argv.includes('--collaboration-only') ? [
-  ['node_modules/vitest/vitest.mjs', 'run', 'server/collaboration-lock.db-spec.ts', '--config', 'vitest.config.db.ts'],
+  ['node_modules/vitest/vitest.mjs', 'run', 'server/collaboration-lock.db-spec.ts', 'server/backup-lock.db-spec.ts', '--config', 'vitest.config.db.ts'],
 ] : [
   [
     "node_modules/drizzle-kit/bin.cjs",

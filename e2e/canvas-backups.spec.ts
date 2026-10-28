@@ -4,7 +4,7 @@ import { Y, seedDocument } from '../packages/collaboration/src/index';
 async function fixture(page: Page, role = 'owner') {
   const doc = seedDocument({ nodes: [{ id: 'backup-node', position: { x: 60, y: 50 }, data: { nodeTitle: '備份節點', nodeContent: '原畫布內容' } }], edges: [] });
   const history = [{ id: `8238303999999-${'a'.repeat(64)}`, capturedAt: '2026-10-28T02:00:00.000Z', sizeBytes: 500 }];
-  let restored = false; let listFails = true; let captureFails = true; let restoreFails = true;
+  let restored = false; let listFails = true; let captureFails = true; let restoreFails = true; let captures = 0;
   await page.context().route('**/api/**', async route => {
     const path = new URL(route.request().url()).pathname;
     const method = route.request().method();
@@ -21,10 +21,11 @@ async function fixture(page: Page, role = 'owner') {
     if (path.endsWith('/backups')) {
       if (method === 'POST') {
         if (captureFails) { captureFails = false; return json({ message: '備份服務暫時失敗' }, 503); }
+        if (captures++ > 0) return json({ ...history[0], skipped: 'unchanged' }, 201);
         history.unshift({ ...history[0], id: `8238303999998-${'b'.repeat(64)}` }); return json(history[0], 201);
       }
       if (listFails) { listFails = false; return json({ message: '無法讀取備份，請重試' }, 503); }
-      return json({ backups: history, cursor: null });
+      return json({ backups: history, cursor: null, policy: { maxVersions: 50, maxAgeDays: 30, autoIntervalMinutes: 15 } });
     }
     if (/\/projects\/(source|restored)$/.test(path)) return json({ id: path.split('/').at(-1), workspaceId: 'shared', name: '備份專案', description: '', layoutDirection: 'LR', role, collaborationEnabled: true, canvasBackupEnabled: true });
     throw new Error(`Unexpected request ${method} ${path}`);
@@ -49,6 +50,10 @@ test('owner can retry failed operations and restore through an explicit confirma
   await expect(dialog.getByRole('alert')).toHaveText('備份服務暫時失敗');
   await dialog.getByRole('button', { name: '立即備份' }).click();
   await expect(dialog.getByRole('status')).toHaveText('已備份雲端畫布');
+  await expect(dialog.getByRole('button', { name: '還原', exact: true })).toHaveCount(2);
+  await expect(dialog.getByText('保留最近 50 份，最長 30 天；自動備份間隔至少 15 分鐘。')).toBeVisible();
+  await dialog.getByRole('button', { name: '立即備份' }).click();
+  await expect(dialog.getByRole('status')).toHaveText('內容未變更，沿用最近的備份');
   await expect(dialog.getByRole('button', { name: '還原', exact: true })).toHaveCount(2);
   await dialog.getByRole('button', { name: '還原', exact: true }).first().click();
   const confirmation = page.getByRole('dialog', { name: '還原備份', exact: true });
