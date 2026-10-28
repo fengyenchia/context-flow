@@ -42,6 +42,8 @@ git log -1 --oneline
 
 重新部署不需重跑已套用的 migration。`TEST_DATABASE_URL` 僅供本機隔離測試，不填入 Vercel。
 
+Preview 未配置獨立服務時先不部署；前後端變數範圍、Shared／branch 覆寫與舊部署檢查見[環境隔離](19-operations.md#production-與-preview)。Frontend 的 API 網址也要隔離，不能只隔離 Backend secrets。
+
 建議同一 Git repository 建立兩個 Vercel Project，分別指定 Root Directory。正式網域為：
 
 - Frontend：`https://context-flow.fengyenchia.com`

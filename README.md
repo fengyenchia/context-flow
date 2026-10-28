@@ -122,6 +122,8 @@ Gemini Key 由使用者登入後在「AI Key」設定，不設共用的前端密
 
 部署設定見 [Vercel 部署](docs/08-vercel-deployment.md)、[Backend 防護](docs/15-backend-security.md) 與 [上線檢查清單](docs/11-release-checklist.md)。
 
+平台通知與實際收信、Production／Preview 隔離及舊 R2 憑證撤銷，見[維運指南](docs/19-operations.md)。尚未配置隔離服務的 Preview 不作正式功能驗收；不能把正式 API 網址複製到 Preview 來代替測試環境。
+
 ## 常見問題與限制
 
 - 上傳 `Failed to fetch`：確認失敗的是 API 還是 R2 PUT；bucket CORS 的 AllowedOrigins 需包含正式前端的完整 origin，不加路徑或結尾斜線。不要公開 bucket 來解決 CORS。

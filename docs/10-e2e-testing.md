@@ -4,7 +4,7 @@
 
 | 指令 | 範圍 |
 | --- | --- |
-| `pnpm test` | 前後端單元測試：持久化交易、節點位置、匯出座標、檔案確認與登入狀態 |
+| `pnpm test` | 前後端單元測試：持久化交易、節點位置、匯出座標、檔案確認、登入狀態與 Preview API 建置防護 |
 | `pnpm test:e2e:api` | 註冊、驗證、登入、工作區、角色權限、專案、畫布保存與錯誤回滾 |
 | `pnpm exec playwright test e2e/collaboration.spec.ts` | 雙使用者 CRDT 合併、三區／資料池／連線同步、離線重連、唯讀角色、在線名稱與游標座標／離開清除；使用隔離 WebSocket fixture |
 | `pnpm exec playwright test e2e/canvas-backups.spec.ts` | 備份清單、立即備份、錯誤重試、還原確認／導向新專案、Esc／焦點與唯讀角色；API 使用替身 |

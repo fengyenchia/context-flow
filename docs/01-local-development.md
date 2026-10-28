@@ -58,3 +58,4 @@ pnpm build
 - 註冊後不能登入：先打開 Email 或開發終端機的驗證連結。
 - 檔案上傳失敗：確認是 API 或 R2 PUT 失敗，檢查 [R2 CORS](03-cloudflare-r2.md)，不要分享預簽網址。
 - Neon、瀏覽器測試與測試產物位置見 [測試指南](10-e2e-testing.md)。
+- 共編旗標要與所連專案的資料來源一致；關閉旗標不會隔離正式資源。日常開發與 Preview 的資料庫、API、R2 及 Liveblocks 應分開，見[環境隔離](19-operations.md#production-與-preview)。

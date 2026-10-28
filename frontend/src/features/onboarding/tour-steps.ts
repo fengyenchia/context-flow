@@ -17,6 +17,6 @@ export function tourSteps(stage: TourStage, readOnly: boolean): Step[] {
     { target: '[data-canvas-area="converge"] .canvas-grid', title: '從發散整理成結論', content: '「整理成結論」主要依據發散節點、連線及重要標記，資料架構作背景。請檢查來源與結論；重新產生會替換前一批 AI 收斂節點。' },
     { target: '[data-tour="canvas-save"]', title: '等「已儲存」再離開', content: '修改會自動儲存；共編模式顯示「已同步」，也可看到其他在線者與游標。離線時保持頁面開啟，恢復連線後才會合併或重試；遇到版本衝突時，先備份未儲存內容再重載。' },
     { target: '[data-tour="canvas-export"]', title: '匯出 PDF 或 PNG', content: '先展開三個畫布區域。PDF 會開列印視窗，選「另存為 PDF」；PNG 下載的是分區圖片 ZIP，解壓縮後閱讀。' },
-    { target: '[data-tour-replay="canvas"]', title: '開始整理你的畫布', content: '這個按鈕可以重新看教學。需要詳細步驟時，開啟完整手冊。教學不會新增節點、變更你的內容或呼叫 AI。' },
+    { target: '[data-tour-replay="canvas"]', title: '開始整理你的畫布', content: '這個按鈕可以重新看教學，詳細步驟請開啟完整手冊。重要階段可請工作區擁有者或管理者立即備份；「已同步」不等於已建立歷史備份。' },
   ];
 }

@@ -22,6 +22,8 @@
 5. 使用者在共編文件首次載入完成前不能編輯。右上角應顯示「已同步 · N 人在線」；N 是連線數，同帳號不同分頁也會分別計數。
 6. 不需設定 Liveblocks public key、不需新增 Frontend 變數、不需新增 Neon migration；`DATABASE_URL` 維持原本連線。
 
+Preview 另用獨立 Liveblocks project；用量通知與 Webhook 交付須分開確認，見[維運指南](19-operations.md)。本機若刻意使用同一正式專案，共編旗標也需保持一致，關閉旗標不是環境隔離方式。
+
 若你在 Vercel 使用 Root Directory，前後端都必須開啟「Include source files outside Root Directory」，讓 `packages/collaboration` 參與建置。
 
 **啟用後不能直接把 `COLLABORATION_ENABLED` 關掉或改用另一組 Liveblocks 專案密鑰**：這會回到舊的 Neon 快照或另一套空房間。回退前必須停止編輯、匯出並遷回最新 Yjs 文件；目前沒有自動遷回工具。啟用但密鑰缺失／服務失效時會報錯，不會默默用舊快照覆蓋。

@@ -1,5 +1,8 @@
 import type { NextConfig } from 'next';
 import { resolve } from 'node:path';
+import { assertPreviewApi } from './src/lib/preview-deployment';
+
+assertPreviewApi({ VERCEL_ENV: process.env.VERCEL_ENV, NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL });
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,

@@ -31,6 +31,8 @@ Webhook 通知有節流，因此不是每次按鍵都會產生一份備份，也
 
 本機／Preview 使用獨立測試 bucket、Liveblocks 專案與 Webhook secret，不共用正式備份。
 
+通知收信、失敗交付／工作檢查與 R2 舊憑證撤銷，見[維運指南](19-operations.md)。通知設定不會停止超額使用，50 份／30 天也不是整個帳號的費用上限。
+
 ### 啟用限制與排程
 
 1. 先部署包含專案備份鎖的新 Backend，維持 `CANVAS_BACKUP_RETENTION_ENABLED=false`。等舊部署的請求結束，不再讓舊版 writer 或舊版 webhook endpoint 寫入同一 bucket，才啟用清理。
