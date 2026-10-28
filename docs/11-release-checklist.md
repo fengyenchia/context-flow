@@ -5,6 +5,7 @@
 - [ ] 前後端建置成功，正式網域與 HTTPS 正常。
 - [ ] 無痕視窗可開啟首頁與 `/api/health`；API 不被 Vercel 平台登入攔截。
 - [ ] 前端 API 位址、Backend CORS 與郵件連結使用正確的正式網域。
+- [ ] 環境變數變更後已重新部署對應專案，確認新部署 Ready，並從正式網域驗收首頁、登入與畫布。
 - [ ] Production 與 Preview 的資料庫、寄信及儲存資源隔離。
 - [ ] Frontend Preview 不連正式 API，Shared／branch 變數與舊 deployment 已核對；未配置獨立資源時 Preview 不部署。
 - [ ] 密鑰僅放 Backend；環境檔、日誌及測試產物未加入 Git。
