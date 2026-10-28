@@ -83,3 +83,10 @@ test('detects Liveblocks secret keys without echoing the value', (t) => {
   f.write('source.txt', value);
   f.safeFailure(f.scan(), value);
 });
+
+test('detects webhook signing keys without echoing the value', (t) => {
+  const f = fixture(t);
+  const token = ['wh', 'sec_', 'X'.repeat(44)].join('');
+  f.write('source.txt', token);
+  f.safeFailure(f.scan(), token);
+});

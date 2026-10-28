@@ -71,6 +71,11 @@ check(
   ) && /\/api\/?$/.test(frontend.NEXT_PUBLIC_API_BASE_URL || ""),
 );
 check('backend 即時共編 LIVEBLOCKS_SECRET_KEY', Boolean(backend.LIVEBLOCKS_SECRET_KEY), backend.COLLABORATION_ENABLED === 'true');
+if (backend.CANVAS_BACKUP_ENABLED === 'true') {
+  check('畫布備份需啟用即時共編', backend.COLLABORATION_ENABLED === 'true');
+  check('畫布備份獨立 R2 bucket', Boolean(backend.CANVAS_BACKUP_BUCKET_NAME) && backend.CANVAS_BACKUP_BUCKET_NAME !== backend.R2_BUCKET_NAME);
+  check('Liveblocks Webhook 簽章密鑰', Boolean(backend.LIVEBLOCKS_WEBHOOK_SECRET));
+}
 console.log('不輸出密鑰；不檢查 Vercel 上的環境變數；共編只在 COLLABORATION_ENABLED=true 時要求密鑰，RAG、Inngest 非必要設定。');
 check(
   "TEST_DATABASE_URL（選用；未設定就無法驗收 Neon 重啟）",

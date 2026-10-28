@@ -7,6 +7,7 @@
 | `pnpm test` | 前後端單元測試：持久化交易、節點位置、匯出座標、檔案確認與登入狀態 |
 | `pnpm test:e2e:api` | 註冊、驗證、登入、工作區、角色權限、專案、畫布保存與錯誤回滾 |
 | `pnpm exec playwright test e2e/collaboration.spec.ts` | 雙使用者 CRDT 合併、三區／資料池／連線同步、離線重連與唯讀角色；使用隔離 WebSocket fixture |
+| `pnpm exec playwright test e2e/canvas-backups.spec.ts` | 備份清單、立即備份、錯誤重試、還原確認／導向新專案、Esc／焦點與唯讀角色；API 使用替身 |
 | `node scripts/test-db.mjs --collaboration-only` | 專用 Neon 測試連線的跨連線 advisory lock；無 migration、無應用資料表讀寫 |
 | `pnpm test:e2e` | Chromium 瀏覽器流程：登入、畫布編輯、重載、匯出、視窗操作、離線與雙分頁衝突 |
 | `pnpm exec playwright test e2e/home.spec.ts` | 首頁 GSAP 動態、捲動按鈕、FAQ、換頁清理、手機排版、深色模式與減少動態設定 |
@@ -36,6 +37,7 @@ PNG 測試檢查 ZIP 分片、尺寸、節點底色、文字像素及缺圖處�
 - 瀏覽器測試自動啟動前端 `127.0.0.1:3100`、後端 `127.0.0.1:3101`；埠須未被使用。
 - 測試使用獨立 `.next-e2e` 建置，覆蓋本機資料庫、R2、寄信及初始管理員設定，不使用正式帳號或資源。
 - API 測試使用記憶體資料、郵件、Gemini 及 Liveblocks SDK 替身，不發出真實寄信、雲端共編或付費 AI 請求。測試啟動器清空 Liveblocks 密鑰並停用共編旗標，個別共編測試才注入替身。
+- 備份 API 測試用官方 Webhook 簽章驗證器與真正的 Yjs 文件，R2／Liveblocks 使用替身；檢查跨專案隔離、角色、重送、失敗重試、損壞內容、附件副本及還原交易回滾。真實服務設定與交付驗收見 [畫布備份](17-canvas-backups.md)。
 - 瀏覽器測試從開發郵件日誌取得驗證連結，再操作正常的 Email 驗證頁。
 - `pnpm test:db` 另讀取 `backend/.env.test.local` 的 `TEST_DATABASE_URL`，只允許獨立、可丟棄的 Neon 分支。
 - DB 測試以獨立 Node 程序重新連線驗證保存結果；父程序的 probe 依設計跳過，由子程序執行。

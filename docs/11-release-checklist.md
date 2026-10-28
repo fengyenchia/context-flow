@@ -14,6 +14,7 @@
 - [ ] Migration 已套用並核對 ledger，不修改或重跑已套用版本。
 - [ ] 資料庫備份保留政策與還原步驟已確認。
 - [ ] 若啟用即時共編，依 [共編指南](16-realtime-collaboration.md) 確認 Liveblocks 資料保存／備份、環境隔離及切換步驟；Neon 舊快照不能當成最新畫布備份。
+- [ ] 若啟用畫布備份，依 [備份指南](17-canvas-backups.md) 確認獨立私人 bucket、Webhook 成功交付、版本保留期限與還原成新專案；立即備份成功不等於 Webhook 已通。
 - [ ] R2 bucket 私有，token 僅授予必要 bucket 權限。
 - [ ] R2 CORS 包含正式前端來源，檔案上傳與下載成功。
 - [ ] 加密金鑰安全保存；既有資料可正常解密。

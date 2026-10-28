@@ -11,6 +11,7 @@ import { geminiFailure } from '@/server/gemini-errors';
 import { db } from '@/src/db/client';
 import { authorizeCollaboration, collaborationEnabled, deleteCollaborativeRoom, readCollaborativeCanvas, revokeCollaborativeRoom, syncWorkspaceRooms } from '@/server/collaboration';
 import { withCollaborationLock } from '@/server/collaboration-lock';
+import { canvasBackupEnabled, captureCanvasBackup, listCanvasBackups, restoreCanvasBackup } from '@/server/canvas-backups';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -196,6 +197,19 @@ async function handleRequest(request: NextRequest, context: Context) {
     if (match && method === 'GET' && match[2] === 'download') return ok(await downloadFile(match[1], user.id));
     match = route.match(/^projects\/([^/]+)\/collaboration\/auth$/);
     if (match && method === 'POST') return ok(await authorizeCollaboration(match[1], user));
+    match = route.match(/^projects\/([^/]+)\/backups(?:\/([^/]+)\/restore)?$/);
+    if (match) {
+      const project = state.project(match[1]);
+      state.requireRole(project.workspaceId, user.id, ['owner', 'admin']);
+      try {
+        if (method === 'POST' && match[2]) return ok(await restoreCanvasBackup(project.id, match[2], user.id), 201);
+        if (method === 'POST' && !match[2]) return ok(await captureCanvasBackup(project.id), 201);
+        if (method === 'GET' && !match[2]) return ok(await listCanvasBackups(project.id, request.nextUrl.searchParams.get('cursor') || undefined));
+      } catch (error) {
+        if (error instanceof ApiProblem) throw error;
+        throw new ApiProblem(503, '畫布備份服務暫時無法使用，請稍後重試');
+      }
+    }
     match = route.match(/^projects\/([^/]+)\/canvas$/);
     if (match && collaborationEnabled()) {
       const project = state.project(match[1]);
@@ -219,7 +233,7 @@ async function handleRequest(request: NextRequest, context: Context) {
       for (const [id, document] of state.documents) if (document.projectId === project.id) state.documents.delete(id);
       return ok({ ok: true });
     }
-    if (match && method === 'GET') { const project = state.project(match[1]); const membership = state.requireRole(project.workspaceId, user.id, ['owner', 'admin', 'editor', 'viewer']); return ok({ ...project, role: membership.role, roomId: `project:${project.id}`, collaborationEnabled: collaborationEnabled() }); }
+    if (match && method === 'GET') { const project = state.project(match[1]); const membership = state.requireRole(project.workspaceId, user.id, ['owner', 'admin', 'editor', 'viewer']); return ok({ ...project, role: membership.role, roomId: `project:${project.id}`, collaborationEnabled: collaborationEnabled(), canvasBackupEnabled: canvasBackupEnabled() && collaborationEnabled() }); }
     match = route.match(/^projects\/([^/]+)\/data-zone\/structure$/);
     if (match && method === 'POST') {
       const project = state.project(match[1]); state.requireRole(project.workspaceId, user.id, ['owner', 'admin', 'editor']);

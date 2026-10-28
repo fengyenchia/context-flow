@@ -18,6 +18,7 @@ const patterns = [
   ['aws-access-key', /(?:AKIA|ASIA)[A-Z0-9]{16}/],
   ['resend-key', /\bre_[A-Za-z0-9]{24,}\b/],
   ['liveblocks-secret', /\bsk_(?:live|test|prod)_[A-Za-z0-9]{32,}\b/],
+  ['webhook-secret', /\bwhsec_[A-Za-z0-9+/]{24,}={0,2}/],
   ['postgres-credential', /postgres(?:ql)?:\/\/[^\s:/'"]+:[^\s@/'"]{16,}@[^\s/'"]+/],
 ];
 let risks = 0;

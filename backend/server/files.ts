@@ -8,22 +8,21 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { ApiProblem, state } from './state';
 
-function storage() {
+export function storage(bucketName = process.env.R2_BUCKET_NAME) {
   const {
     R2_ACCOUNT_ID,
-    R2_BUCKET_NAME,
     R2_ACCESS_KEY_ID,
     R2_SECRET_ACCESS_KEY,
   } = process.env;
   if (
     !R2_ACCOUNT_ID ||
-    !R2_BUCKET_NAME ||
+    !bucketName ||
     !R2_ACCESS_KEY_ID ||
     !R2_SECRET_ACCESS_KEY
   )
     throw new ApiProblem(503, '檔案儲存尚未設定，請先完成 R2 設定');
   return {
-    bucket: R2_BUCKET_NAME,
+    bucket: bucketName,
     client: new S3Client({
       region: 'auto',
       endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,

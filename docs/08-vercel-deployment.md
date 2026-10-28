@@ -76,6 +76,8 @@ NEXT_PUBLIC_API_BASE_URL=https://api.context-flow.fengyenchia.com/api
 
 Backend production 至少需要 JWT secrets、`DATABASE_URL`、API Key encryption key 與寄信設定；檔案功能另需 R2。即時共編另需 Backend 的 `LIVEBLOCKS_SECRET_KEY` 及 `COLLABORATION_ENABLED=true`，切換與驗收見 [即時共編](16-realtime-collaboration.md)。Inngest 不是目前必要設定。
 
+畫布自動備份另需 `CANVAS_BACKUP_ENABLED=true`、`CANVAS_BACKUP_BUCKET_NAME` 與 `LIVEBLOCKS_WEBHOOK_SECRET`，並在 Liveblocks 訂閱 `ydocUpdated`；私人 bucket、權限與驗收見 [畫布備份](17-canvas-backups.md)。不需要 migration，Frontend 無需新增變數。
+
 Backend 需填的變數名稱（值從本機安全複製，沿用已有加密 key 才能解密既有 Gemini Key）：`DATABASE_URL`、`JWT_ACCESS_SECRET`、`JWT_REFRESH_SECRET`、`USER_API_KEY_ENCRYPTION_KEY`、`RESEND_API_KEY`、`EMAIL_FROM`、`R2_ACCOUNT_ID`、`R2_BUCKET_NAME`、`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`、`FRONTEND_URL`、`PUBLIC_APP_URL`、`GEMINI_MODEL`（沿用目前值）、`DATA_MODE=neon`、`ENABLE_EXPERIMENTAL_COREPACK=1`。`NODE_ENV` 由 Vercel 正式 build/runtime 提供即可，不必手動覆寫。
 
 完成管理員初始化後，移除 `INITIAL_ADMIN_USERNAME`、`INITIAL_ADMIN_PASSWORD_HASH`，再重新部署 Backend。

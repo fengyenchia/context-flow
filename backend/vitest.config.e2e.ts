@@ -25,6 +25,9 @@ export default defineConfig({
       INITIAL_ADMIN_PASSWORD_HASH: '',
       COLLABORATION_ENABLED: 'false',
       LIVEBLOCKS_SECRET_KEY: '',
+      LIVEBLOCKS_WEBHOOK_SECRET: '',
+      CANVAS_BACKUP_ENABLED: 'false',
+      CANVAS_BACKUP_BUCKET_NAME: '',
     },
   },
 });

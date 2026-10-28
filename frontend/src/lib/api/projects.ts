@@ -10,3 +10,8 @@ export const getCanvas = (projectId: string) => api<CanvasSnapshot>(`/projects/$
 export const saveCanvas = (projectId: string, snapshot: Omit<CanvasSnapshot, 'updatedAt'> & { baseUpdatedAt: string | null }) => api<CanvasSnapshot>(`/projects/${projectId}/canvas`, { method: 'PUT', body: JSON.stringify(snapshot) });
 export const askProjectAssistant = (projectId: string, prompt: string, options?: { concise?: boolean }) => api<AiChatResult>('/ai/chat', { method: 'POST', body: JSON.stringify({ projectId, prompt, ...options }) });
 export const generateDataZone = (projectId: string, resources: DataResource[]) => api<DataZoneStructure>(`/projects/${projectId}/data-zone/structure`, { method: 'POST', body: JSON.stringify({ resources }) });
+
+export type CanvasBackup = { id: string; capturedAt: string; sizeBytes: number };
+export const listCanvasBackups = (projectId: string, cursor?: string) => api<{ backups: CanvasBackup[]; cursor: string | null }>(`/projects/${projectId}/backups${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`);
+export const captureCanvasBackup = (projectId: string) => api<CanvasBackup>(`/projects/${projectId}/backups`, { method: 'POST' });
+export const restoreCanvasBackup = (projectId: string, id: string) => api<Project>(`/projects/${projectId}/backups/${id}/restore`, { method: 'POST' });

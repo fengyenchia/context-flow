@@ -81,6 +81,7 @@ import type {
 import { exportProjectPdf, exportProjectPng } from "./export-utils";
 import { exportErrorMessage, readImageData } from "./image-data";
 import { CanvasReplica } from './canvas-replica';
+import { CanvasBackups } from './canvas-backups';
 import { readSnapshot, type Snapshot } from '@context-flow/collaboration';
 import type { SyncState } from './collaboration-connection';
 
@@ -2490,6 +2491,7 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
         </div>
         <ProductTour key={project.id} stage="canvas" readOnly={!canEdit} onBeforeStart={prepareTour} />
         <Badge>{project.role}</Badge>
+        {project.canvasBackupEnabled && (project.role === 'owner' || project.role === 'admin') && <CanvasBackups key={`backups-${project.id}`} projectId={project.id} synced={collaborationStatus === 'synced'} />}
         {project.collaborationEnabled && <span role="status" data-tour="canvas-save" data-collaboration-status={collaborationStatus} className="text-xs text-muted" aria-live="polite">
           {collaborationStatus === 'synced' ? `已同步 · ${otherEditors + 1} 人在線` : collaborationStatus === 'syncing' ? '同步中…' : collaborationStatus === 'offline' ? '連線中斷，重連後自動合併；請勿關閉此頁' : collaborationStatus === 'error' ? '共編連線失敗，請保留此頁並檢查連線' : '正在連接共編…'}
         </span>}
