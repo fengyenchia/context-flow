@@ -15,6 +15,7 @@
 - [ ] 資料庫備份保留政策與還原步驟已確認。
 - [ ] 若啟用即時共編，依 [共編指南](16-realtime-collaboration.md) 確認 Liveblocks 資料保存／備份、環境隔離及切換步驟；Neon 舊快照不能當成最新畫布備份。
 - [ ] 若啟用畫布備份，依 [備份指南](17-canvas-backups.md) 確認獨立私人 bucket、Webhook 成功交付、版本保留期限與還原成新專案；立即備份成功不等於 Webhook 已通。
+- [ ] 若啟用專案邀請，先套用 0005，再設定 `PROJECT_INVITES_ENABLED=true`；驗收非成員只存取一個專案及即時撤權，見 [邀請指南](18-project-invitations.md)。
 - [ ] R2 bucket 私有，token 僅授予必要 bucket 權限。
 - [ ] R2 CORS 包含正式前端來源，檔案上傳與下載成功。
 - [ ] 加密金鑰安全保存；既有資料可正常解密。

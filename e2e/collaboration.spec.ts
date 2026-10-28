@@ -103,6 +103,7 @@ test('two users merge concurrent node dialogs, fields, text and all canvas areas
     await a.getByPlaceholder('貼上筆記或文字…').fill('兩人共用的資料池');
     await a.getByRole('button', { name: '加入資料池' }).click();
     await expect(b.getByText('共享來源', { exact: true })).toBeVisible();
+    for (const page of [a, b]) await expect(page.locator('[data-collaboration-status]')).toHaveAttribute('data-collaboration-status', 'synced');
     await a.reload(); await b.reload();
     for (const page of [a, b]) {
       await expect(page.locator('[data-collaboration-status]')).toHaveAttribute('data-collaboration-status', 'synced');

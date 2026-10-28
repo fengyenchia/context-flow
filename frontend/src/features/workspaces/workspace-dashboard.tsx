@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
 import { createProject, listProjects } from "@/lib/api/projects";
+import { listSharedProjects } from '@/lib/api/project-invites';
 import {
   createWorkspace as createWorkspaceApi,
   inviteWorkspaceMember,
@@ -33,6 +34,7 @@ export function WorkspaceDashboard() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [projects, setProjects] = useState<Record<string, Project[]>>({});
   const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [sharedProjects, setSharedProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showCreate, setShowCreate] = useState(false);
@@ -52,6 +54,7 @@ export function WorkspaceDashboard() {
       );
       setProjects(Object.fromEntries(entries));
       setInvitations(await listInvitations());
+      setSharedProjects(await listSharedProjects().catch(() => []));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "無法讀取工作區");
     } finally {
@@ -205,6 +208,7 @@ export function WorkspaceDashboard() {
         </form>
       </Modal>
       <section className="mt-10 space-y-8">
+        {sharedProjects.length > 0 && <section aria-label="受邀專案"><h2 className="mb-4 font-semibold">受邀專案</h2><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{sharedProjects.map(project => <ProjectCard key={project.id} project={project} role="viewer" onChanged={load} />)}</div></section>}
         {workspaces.map((workspace) => (
           <section key={workspace.id} aria-label={workspace.name}>
             <div className="mb-4 flex flex-wrap items-center gap-3">

@@ -27,7 +27,7 @@ async function fixture(page: Page, options: { registered?: boolean; viewer?: boo
       if (!loggedIn) return route.fulfill({ status: 401, headers, json: { message: '尚未登入' } });
       body = { user, accessToken: 'tour-test-only' };
     } else if (path === '/api/workspaces') body = [{ id: 'tour-workspace', name: '個人工作區', kind: 'personal', role, projectCount: 1, memberCount: 1 }];
-    else if (path === '/api/workspace-invitations') body = [];
+    else if (path === '/api/workspace-invitations' || path === '/api/shared-projects') body = [];
     else if (path === '/api/workspaces/tour-workspace/projects') body = [project];
     else if (path === '/api/projects/tour-project') body = project;
     else if (path === '/api/projects/tour-project/canvas') {

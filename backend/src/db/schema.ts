@@ -112,6 +112,24 @@ export const projects = pgTable('projects', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [index('idx_projects_workspace').on(table.workspaceId)]);
 
+export const projectInviteLinks = pgTable('project_invite_links', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  tokenHash: varchar('token_hash', { length: 64 }).notNull().unique(),
+  role: varchar('role', { length: 20 }).notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  createdByUserId: uuid('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, table => [index('idx_project_invite_links_project').on(table.projectId)]);
+
+export const projectInviteGrants = pgTable('project_invite_grants', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  linkId: uuid('link_id').notNull().references(() => projectInviteLinks.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  joinedAt: timestamp('joined_at', { withTimezone: true }).notNull().defaultNow(),
+}, table => [uniqueIndex('idx_project_invite_grants_link_user').on(table.linkId, table.userId), index('idx_project_invite_grants_user').on(table.userId)]);
+
 export const documents = pgTable('documents', {
   id: uuid('id').defaultRandom().primaryKey(),
   projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),

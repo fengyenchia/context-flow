@@ -40,7 +40,7 @@ export async function prepareUpload(
   input: Record<string, unknown>,
 ) {
   const project = state.project(projectId);
-  state.requireRole(project.workspaceId, userId, ['owner', 'admin', 'editor']);
+  state.requireProjectRole(project.id, userId, ['owner', 'admin', 'editor']);
   const name =
     typeof input.name === 'string' ? input.name.trim().slice(0, 255) : '';
   const size = Number(input.size);
@@ -88,7 +88,7 @@ export async function completeUpload(id: string, userId: string) {
   const document = state.documents.get(id);
   if (!document) throw new ApiProblem(404, '找不到檔案');
   const project = state.project(document.projectId);
-  state.requireRole(project.workspaceId, userId, ['owner', 'admin', 'editor']);
+  state.requireProjectRole(project.id, userId, ['owner', 'admin', 'editor']);
   const { client, bucket } = storage();
   const object = await client.send(
     new HeadObjectCommand({ Bucket: bucket, Key: document.storageKey }),
@@ -111,7 +111,7 @@ export async function downloadFile(id: string, userId: string) {
   if (!document || document.status !== 'ready')
     throw new ApiProblem(404, '找不到已完成上傳的檔案');
   const project = state.project(document.projectId);
-  state.requireRole(project.workspaceId, userId, [
+  state.requireProjectRole(project.id, userId, [
     'owner',
     'admin',
     'editor',

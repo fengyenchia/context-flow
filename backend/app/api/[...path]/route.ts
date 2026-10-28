@@ -9,9 +9,11 @@ import { prepareUpload, completeUpload, downloadFile } from '@/server/files';
 import { enforceAuthRate } from '@/server/rate-limit';
 import { geminiFailure } from '@/server/gemini-errors';
 import { db } from '@/src/db/client';
-import { authorizeCollaboration, collaborationEnabled, deleteCollaborativeRoom, readCollaborativeCanvas, revokeCollaborativeRoom, syncWorkspaceRooms } from '@/server/collaboration';
+import { authorizeCollaboration, collaborationEnabled, deleteCollaborativeRoom, readCollaborativeCanvas, revokeCollaborativeRoom, syncRoomPermissions, syncWorkspaceRooms } from '@/server/collaboration';
 import { withCollaborationLock } from '@/server/collaboration-lock';
 import { canvasBackupEnabled, captureCanvasBackup, listCanvasBackups, restoreCanvasBackup } from '@/server/canvas-backups';
+import { projectInvitesEnabled } from '@/server/project-invite-config';
+import { acceptProjectLink, createProjectLink, listProjectLinks, previewProjectLink, updateProjectLink } from '@/server/project-invites';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -150,7 +152,7 @@ async function handleRequest(request: NextRequest, context: Context) {
     if (route === 'account/ai-credentials/gemini' && method === 'DELETE') { state.credentials.delete(user.id); return ok({ ok: true }); }
     if (route === 'ai/chat' && method === 'POST') {
       const projectId = (await request.clone().json().catch(() => ({})) as Record<string, unknown>).projectId;
-      if (typeof projectId === 'string') { const project = state.project(projectId); state.requireRole(project.workspaceId, user.id, ['owner', 'admin', 'editor', 'viewer']); }
+      if (typeof projectId === 'string') state.requireProjectRole(projectId, user.id, ['owner', 'admin', 'editor', 'viewer']);
       const data = await body(request); const record = state.credentials.get(user.id); if (!record) throw new ApiProblem(400, '請先在設定頁新增 Gemini API Key');
       const client = new GoogleGenAI({ apiKey: decryptKey(record) });
       try {
@@ -162,6 +164,9 @@ async function handleRequest(request: NextRequest, context: Context) {
     }
 
     if (route === 'workspaces' && method === 'GET') return ok([...state.memberships.values()].filter((item) => item.userId === user.id).map((membership) => { const workspace = state.workspace(membership.workspaceId); return { ...workspace, role: membership.role, projectCount: [...state.projects.values()].filter((item) => item.workspaceId === workspace.id).length, memberCount: [...state.memberships.values()].filter((item) => item.workspaceId === workspace.id).length }; }));
+    if (route === 'shared-projects' && method === 'GET') return ok(projectInvitesEnabled() ? [...state.projects.values()].filter(project => !state.member(project.workspaceId, user.id) && state.projectRole(project.id, user.id)).map(project => ({ ...project, role: state.projectRole(project.id, user.id), accessSource: 'invitation' })) : []);
+    if (route === 'project-invitations/preview' && method === 'POST') return ok(previewProjectLink((await body(request)).token));
+    if (route === 'project-invitations/accept' && method === 'POST') return ok(acceptProjectLink((await body(request)).token, user.id));
     if (route === 'workspaces' && method === 'POST') { const data = await body(request); const workspace = { id: randomUUID(), name: requiredString(data.name, '工作區名稱'), kind: 'shared' as const, createdByUserId: user.id, createdAt: new Date() }; state.workspaces.set(workspace.id, workspace); state.memberships.set(state.memberKey(workspace.id, user.id), { workspaceId: workspace.id, userId: user.id, role: 'owner', joinedAt: new Date() }); return ok({ ...workspace, role: 'owner', projectCount: 0, memberCount: 1 }, 201); }
     if (route === 'workspace-invitations' && method === 'GET') return ok([...state.invitations.values()].filter((item) => item.targetUserId === user.id && item.status === 'pending').map((item) => ({ ...item, workspace: state.workspace(item.workspaceId) })));
 
@@ -197,6 +202,17 @@ async function handleRequest(request: NextRequest, context: Context) {
     if (match && method === 'GET' && match[2] === 'download') return ok(await downloadFile(match[1], user.id));
     match = route.match(/^projects\/([^/]+)\/collaboration\/auth$/);
     if (match && method === 'POST') return ok(await authorizeCollaboration(match[1], user));
+    match = route.match(/^projects\/([^/]+)\/invite-links(?:\/([^/]+))?$/);
+    if (match) {
+      if (method === 'GET' && !match[2]) return ok(listProjectLinks(match[1], user.id));
+      if (method === 'POST' && !match[2]) return ok(createProjectLink(match[1], user.id, await body(request)), 201);
+      if (method === 'DELETE' && match[2]) return ok(updateProjectLink(match[1], match[2], user.id));
+      if (method === 'PATCH' && match[2]) {
+        const data = await body(request);
+        if (!Object.hasOwn(data, 'role')) throw new ApiProblem(400, '缺少權限');
+        return ok(updateProjectLink(match[1], match[2], user.id, data.role));
+      }
+    }
     match = route.match(/^projects\/([^/]+)\/backups(?:\/([^/]+)\/restore)?$/);
     if (match) {
       const project = state.project(match[1]);
@@ -213,12 +229,12 @@ async function handleRequest(request: NextRequest, context: Context) {
     match = route.match(/^projects\/([^/]+)\/canvas$/);
     if (match && collaborationEnabled()) {
       const project = state.project(match[1]);
-      state.requireRole(project.workspaceId, user.id, method === 'GET' ? ['owner', 'admin', 'editor', 'viewer'] : ['owner', 'admin', 'editor']);
+      state.requireProjectRole(project.id, user.id, method === 'GET' ? ['owner', 'admin', 'editor', 'viewer'] : ['owner', 'admin', 'editor']);
       if (method === 'GET') return ok(await readCollaborativeCanvas(project.id));
       if (method === 'PUT') throw new ApiProblem(409, '已啟用即時共編，請重新載入新版畫布；不能以舊快照覆蓋共編內容');
     }
-    if (match && method === 'GET') { const project = state.project(match[1]); state.requireRole(project.workspaceId, user.id, ['owner', 'admin', 'editor', 'viewer']); return ok(state.canvasSnapshots.get(project.id) ?? { nodes: [], edges: [], convergenceNodes: [], convergenceEdges: [], resources: [], conversations: {}, summary: '', updatedAt: null }); }
-    if (match && method === 'PUT') { const project = state.project(match[1]); state.requireRole(project.workspaceId, user.id, ['owner', 'admin', 'editor']); const data = await body(request); const previous = state.canvasSnapshots.get(project.id); if (!Object.prototype.hasOwnProperty.call(data, 'baseUpdatedAt')) throw new ApiProblem(400, '缺少畫布版本，請重新載入頁面後再儲存'); if (Object.prototype.hasOwnProperty.call(data, 'baseUpdatedAt') && data.baseUpdatedAt !== (previous?.updatedAt.toISOString() || null)) throw new ApiProblem(409, '此畫布已被其他視窗更新，請先匯出本機 JSON，再重新載入'); if (!Array.isArray(data.nodes) || !Array.isArray(data.edges)) throw new ApiProblem(400, '畫布快照格式不正確'); const snapshot = { nodes: data.nodes, edges: data.edges, convergenceNodes: Array.isArray(data.convergenceNodes) ? data.convergenceNodes : [], convergenceEdges: Array.isArray(data.convergenceEdges) ? data.convergenceEdges : [], resources: Array.isArray(data.resources) ? data.resources : [], conversations: data.conversations && typeof data.conversations === 'object' ? data.conversations as Record<string, string[]> : {}, summary: typeof data.summary === 'string' ? data.summary : '', updatedAt: new Date(Math.max(Date.now(), (previous?.updatedAt.getTime() || 0) + 1)) }; state.canvasSnapshots.set(project.id, snapshot); return ok(snapshot); }
+    if (match && method === 'GET') { const project = state.project(match[1]); state.requireProjectRole(project.id, user.id, ['owner', 'admin', 'editor', 'viewer']); return ok(state.canvasSnapshots.get(project.id) ?? { nodes: [], edges: [], convergenceNodes: [], convergenceEdges: [], resources: [], conversations: {}, summary: '', updatedAt: null }); }
+    if (match && method === 'PUT') { const project = state.project(match[1]); state.requireProjectRole(project.id, user.id, ['owner', 'admin', 'editor']); const data = await body(request); const previous = state.canvasSnapshots.get(project.id); if (!Object.prototype.hasOwnProperty.call(data, 'baseUpdatedAt')) throw new ApiProblem(400, '缺少畫布版本，請重新載入頁面後再儲存'); if (Object.prototype.hasOwnProperty.call(data, 'baseUpdatedAt') && data.baseUpdatedAt !== (previous?.updatedAt.toISOString() || null)) throw new ApiProblem(409, '此畫布已被其他視窗更新，請先匯出本機 JSON，再重新載入'); if (!Array.isArray(data.nodes) || !Array.isArray(data.edges)) throw new ApiProblem(400, '畫布快照格式不正確'); const snapshot = { nodes: data.nodes, edges: data.edges, convergenceNodes: Array.isArray(data.convergenceNodes) ? data.convergenceNodes : [], convergenceEdges: Array.isArray(data.convergenceEdges) ? data.convergenceEdges : [], resources: Array.isArray(data.resources) ? data.resources : [], conversations: data.conversations && typeof data.conversations === 'object' ? data.conversations as Record<string, string[]> : {}, summary: typeof data.summary === 'string' ? data.summary : '', updatedAt: new Date(Math.max(Date.now(), (previous?.updatedAt.getTime() || 0) + 1)) }; state.canvasSnapshots.set(project.id, snapshot); return ok(snapshot); }
     match = route.match(/^projects\/([^/]+)$/);
     if (match && method === 'PATCH') {
       const project = state.project(match[1]); state.requireRole(project.workspaceId, user.id, ['owner', 'admin', 'editor']);
@@ -230,13 +246,16 @@ async function handleRequest(request: NextRequest, context: Context) {
     if (match && method === 'DELETE') {
       const project = state.project(match[1]); state.requireRole(project.workspaceId, user.id, ['owner', 'admin']);
       state.projects.delete(project.id); state.canvasSnapshots.delete(project.id);
+      const links = new Set([...state.projectLinks.values()].filter(link => link.projectId === project.id).map(link => link.id));
+      for (const id of links) state.projectLinks.delete(id);
+      for (const [id, grant] of state.projectGrants) if (links.has(grant.linkId)) state.projectGrants.delete(id);
       for (const [id, document] of state.documents) if (document.projectId === project.id) state.documents.delete(id);
       return ok({ ok: true });
     }
-    if (match && method === 'GET') { const project = state.project(match[1]); const membership = state.requireRole(project.workspaceId, user.id, ['owner', 'admin', 'editor', 'viewer']); return ok({ ...project, role: membership.role, roomId: `project:${project.id}`, collaborationEnabled: collaborationEnabled(), canvasBackupEnabled: canvasBackupEnabled() && collaborationEnabled() }); }
+    if (match && method === 'GET') { const project = state.project(match[1]); const role = state.requireProjectRole(project.id, user.id, ['owner', 'admin', 'editor', 'viewer']); return ok({ ...project, role, accessSource: state.member(project.workspaceId, user.id) ? 'workspace' : 'invitation', projectInvitesEnabled: projectInvitesEnabled(), roomId: `project:${project.id}`, collaborationEnabled: collaborationEnabled(), canvasBackupEnabled: canvasBackupEnabled() && collaborationEnabled() }); }
     match = route.match(/^projects\/([^/]+)\/data-zone\/structure$/);
     if (match && method === 'POST') {
-      const project = state.project(match[1]); state.requireRole(project.workspaceId, user.id, ['owner', 'admin', 'editor']);
+      const project = state.project(match[1]); state.requireProjectRole(project.id, user.id, ['owner', 'admin', 'editor']);
       const record = state.credentials.get(user.id); if (!record) throw new ApiProblem(400, '請先在設定頁新增 Gemini API Key，才能整理 Data Zone');
       const resources = dataResources((await body(request)).resources);
       const client = new GoogleGenAI({ apiKey: decryptKey(record) });
@@ -269,11 +288,25 @@ async function handler(request: NextRequest, context: Context) {
       const beforeMembers = new Map([...state.memberships].map(([key, item]) => [key, { ...item }]));
       const beforeStatuses = new Map([...state.users].map(([id, item]) => [id, item.status]));
       const beforeProjects = new Set(state.projects.keys());
+      const beforeLinks = new Map([...state.projectLinks].map(([id, link]) => [id, { ...link }]));
+      const beforeGrants = new Map([...state.projectGrants].map(([id, grant]) => [id, { ...grant }]));
       const response = await handleRequest(request, context);
       if (!response.ok) throw new ApiProblem(response.status, (await response.json()).message);
       const affected = new Set<string>();
+      const affectedProjects = new Set<string>();
       const deleted = [...beforeProjects].filter(id => !state.projects.has(id));
       if (collaborationEnabled()) {
+        for (const id of new Set([...beforeLinks.keys(), ...state.projectLinks.keys()])) {
+          const before = beforeLinks.get(id), after = state.projectLinks.get(id);
+          if (JSON.stringify(before) !== JSON.stringify(after)) { if (before) affectedProjects.add(before.projectId); if (after) affectedProjects.add(after.projectId); }
+        }
+        for (const id of new Set([...beforeGrants.keys(), ...state.projectGrants.keys()])) {
+          if (JSON.stringify(beforeGrants.get(id)) !== JSON.stringify(state.projectGrants.get(id))) {
+            const grant = beforeGrants.get(id) || state.projectGrants.get(id)!;
+            const link = beforeLinks.get(grant.linkId) || state.projectLinks.get(grant.linkId);
+            if (link) affectedProjects.add(link.projectId);
+          }
+        }
         for (const key of new Set([...beforeMembers.keys(), ...state.memberships.keys()])) {
           const before = beforeMembers.get(key); const after = state.memberships.get(key);
           if (before?.role !== after?.role) {
@@ -283,14 +316,23 @@ async function handler(request: NextRequest, context: Context) {
         }
         for (const [id, status] of beforeStatuses) if (state.users.get(id)?.status !== status) {
           for (const member of [...beforeMembers.values(), ...state.memberships.values()]) if (member.userId === id) affected.add(member.workspaceId);
+          for (const grant of state.projectGrants.values()) if (grant.userId === id) { const link = state.projectLinks.get(grant.linkId); if (link) affectedProjects.add(link.projectId); }
         }
         // Revoke before committing; grant only after Neon confirms success.
         for (const workspaceId of affected) await syncWorkspaceRooms(workspaceId, true);
+        for (const projectId of affectedProjects) {
+          const project = state.projects.get(projectId);
+          if (project && !affected.has(project.workspaceId)) await syncRoomPermissions(projectId, false, true);
+        }
         for (const projectId of deleted) await revokeCollaborativeRoom(projectId);
       }
       await state.persist();
       if (collaborationEnabled()) {
         for (const workspaceId of affected) await syncWorkspaceRooms(workspaceId);
+        for (const projectId of affectedProjects) {
+          const project = state.projects.get(projectId);
+          if (project && !affected.has(project.workspaceId)) await syncRoomPermissions(projectId);
+        }
         for (const projectId of deleted) await deleteCollaborativeRoom(projectId);
       }
       return response;

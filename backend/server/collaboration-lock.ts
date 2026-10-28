@@ -5,9 +5,9 @@ import { db } from '../src/db/client';
  * request-scoped transaction owns only the lock; existing persistence retains
  * its own atomic batches. Always close the WebSocket pool within this request. */
 export async function withCollaborationLock<T>(route: string, method: string, action: () => Promise<T>): Promise<T> {
-  const sensitive = /^(projects\/[^/]+\/collaboration\/auth|workspaces\/[^/]+\/members\/[^/]+|workspace-invitations\/[^/]+\/accept|admin\/users\/[^/]+\/(status|role))$/.test(route)
+  const sensitive = /^(projects\/[^/]+\/collaboration\/auth|projects\/[^/]+\/invite-links(?:\/[^/]+)?|project-invitations\/accept|workspaces\/[^/]+\/members\/[^/]+|workspace-invitations\/[^/]+\/accept|admin\/users\/[^/]+\/(status|role))$/.test(route)
     || (method === 'DELETE' && /^projects\/[^/]+$/.test(route));
-  if (!sensitive || !db || process.env.COLLABORATION_ENABLED !== 'true') return action();
+  if (!sensitive || !db || (process.env.COLLABORATION_ENABLED !== 'true' && process.env.PROJECT_INVITES_ENABLED !== 'true')) return action();
   const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, connectionTimeoutMillis: 10_000 });
   try {
     const client = await pool.connect();

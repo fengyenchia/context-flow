@@ -15,6 +15,8 @@ Drizzle schema 位於 `backend/src/db/schema.ts`；migration 與 snapshots 位�
 
 0003 在尚未套用的環境會將舊表改名 `app_state_legacy_backup`；0004 新增 `email_verification_tokens`。應保留 migration 與 snapshots，供新環境建置及遷移比對使用。
 
+0005 新增單一專案邀請連結及授權資料表。新程式在 `PROJECT_INVITES_ENABLED` 未啟用時不讀新表；先完成備份、套用新增 migration，再開啟功能，見 [專案邀請部署](18-project-invitations.md)。
+
 ## 全新環境
 
 只有新環境才依序完成以下操作：

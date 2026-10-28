@@ -58,6 +58,7 @@ export function ProjectCard({
           <IconArrowRight className="size-4 text-muted" />
         </div>
         <h3 className="mt-8 font-semibold">{project.name}</h3>
+        {project.accessSource === 'invitation' && <p className="mt-1 text-sm text-muted">{project.role === 'editor' ? '可編輯' : '僅檢視'}</p>}
         <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted">
           {project.description || "尚未加入專案說明"}
         </p>

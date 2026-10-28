@@ -28,6 +28,7 @@ export default defineConfig({
       LIVEBLOCKS_WEBHOOK_SECRET: '',
       CANVAS_BACKUP_ENABLED: 'false',
       CANVAS_BACKUP_BUCKET_NAME: '',
+      PROJECT_INVITES_ENABLED: 'false',
     },
   },
 });

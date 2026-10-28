@@ -140,7 +140,7 @@ for (const width of [1440, 375]) {
         accessToken: 'guide-test-only',
         user: { id: 'guide-user', username: 'guide-user', displayName: '手冊測試', role: 'user', status: 'active', hasAiKey: false },
       } });
-      if (path === '/api/workspaces' || path === '/api/workspace-invitations') return route.fulfill({ headers, json: [] });
+      if (path === '/api/workspaces' || path === '/api/workspace-invitations' || path === '/api/shared-projects') return route.fulfill({ headers, json: [] });
       throw new Error(`Unexpected API request: ${path}`);
     });
     await page.goto('/workspaces');

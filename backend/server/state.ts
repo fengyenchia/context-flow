@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { db } from '../src/db/client';
+import { projectInvitesEnabled } from './project-invite-config';
+import { projectInviteLinks, projectInviteGrants } from '../src/db/schema';
 import {
   captureBaseline,
   collectionNames,
@@ -73,6 +75,9 @@ export type Invitation = {
   status: 'pending' | 'accepted' | 'declined';
   createdAt: Date;
 };
+
+export type ProjectInviteLink = { id: string; projectId: string; tokenHash: string; role: 'editor' | 'viewer'; expiresAt: Date; revokedAt?: Date; createdByUserId: string | null; createdAt: Date };
+export type ProjectInviteGrant = { id: string; linkId: string; userId: string; joinedAt: Date };
 type Session = {
   id: string;
   userId: string;
@@ -121,6 +126,8 @@ export class MemoryState {
   memberships = new Map<string, Membership>();
   projects = new Map<string, Project>();
   invitations = new Map<string, Invitation>();
+  projectLinks = new Map<string, ProjectInviteLink>();
+  projectGrants = new Map<string, ProjectInviteGrant>();
   sessions = new Map<string, Session>();
   credentials = new Map<string, Credential>();
   resets = new Map<string, Reset>();
@@ -153,6 +160,8 @@ export class MemoryState {
       summaryRows,
       verificationRows,
       documentRows,
+      linkRows,
+      grantRows,
     ] = await Promise.all([
       db.select().from(usersTable),
       db.select().from(workspacesTable),
@@ -176,6 +185,8 @@ export class MemoryState {
       db.select().from(canvasSummaries),
       db.select().from(emailVerificationTokens),
       db.select().from(documentsTable),
+      projectInvitesEnabled() ? db.select().from(projectInviteLinks) : Promise.resolve([]),
+      projectInvitesEnabled() ? db.select().from(projectInviteGrants) : Promise.resolve([]),
     ]);
     let createdPersonalWorkspace = false;
     {
@@ -299,6 +310,8 @@ export class MemoryState {
         ]),
       );
       this.documents = new Map(documentRows.map((row) => [row.id, row]));
+      this.projectLinks = new Map(linkRows.map(row => [row.id, { ...row, role: row.role === 'editor' ? 'editor' : 'viewer', revokedAt: row.revokedAt ?? undefined }]));
+      this.projectGrants = new Map(grantRows.map(row => [row.id, row]));
       this.baseline = captureBaseline(this);
       const snapshots = new Map<string, CanvasSnapshot>();
       for (const row of nodeRows) {
@@ -520,6 +533,27 @@ export class MemoryState {
   }
   memberKey(workspaceId: string, userId: string) {
     return `${workspaceId}:${userId}`;
+  }
+  projectRole(projectId: string, userId: string): Membership['role'] | undefined {
+    const project = this.project(projectId);
+    if (this.users.get(userId)?.status !== 'active') return undefined;
+    let role = this.member(project.workspaceId, userId)?.role;
+    if (!projectInvitesEnabled() || role === 'owner' || role === 'admin' || role === 'editor') return role;
+    for (const grant of this.projectGrants.values()) {
+      if (grant.userId !== userId) continue;
+      const link = this.projectLinks.get(grant.linkId);
+      // Expiry restricts redemption only; accepted grants last until revocation.
+      if (link?.projectId === projectId && !link.revokedAt) {
+        if (link.role === 'editor') return 'editor';
+        role = 'viewer';
+      }
+    }
+    return role;
+  }
+  requireProjectRole(projectId: string, userId: string, roles: Membership['role'][]) {
+    const role = this.projectRole(projectId, userId);
+    if (!role || !roles.includes(role)) throw new ApiProblem(403, '沒有此專案權限');
+    return role;
   }
   member(workspaceId: string, userId: string) {
     return this.memberships.get(this.memberKey(workspaceId, userId));

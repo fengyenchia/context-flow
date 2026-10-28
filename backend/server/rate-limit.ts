@@ -13,6 +13,8 @@ export function enforceAuthRate(
       'auth/forgot-password',
       'auth/reset-password',
       'auth/resend-verification',
+      'project-invitations/preview',
+      'project-invitations/accept',
     ].includes(route)
   )
     return;

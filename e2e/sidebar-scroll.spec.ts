@@ -40,6 +40,7 @@ for (const width of [1440, 375]) {
         body = workspaces;
       } else if (
         path === "/api/workspace-invitations" ||
+        path === "/api/shared-projects" ||
         /^\/api\/workspaces\/scroll-workspace-\d+\/projects$/.test(path)
       ) {
         body = [];

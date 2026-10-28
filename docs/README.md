@@ -19,5 +19,6 @@
 | Backend Firewall／限流 | [15 防護設定](15-backend-security.md) |
 | Liveblocks 設定、資料保存與共編驗收 | [16 即時共編](16-realtime-collaboration.md) |
 | 自動備份、R2 設定與還原 | [17 畫布備份](17-canvas-backups.md) |
+| 單一專案邀請、期限、角色與撤銷 | [18 專案邀請連結](18-project-invitations.md) |
 
 密鑰與連線字串只放本機環境檔或平台環境變數，不加入文件或 Git。

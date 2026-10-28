@@ -82,6 +82,7 @@ import { exportProjectPdf, exportProjectPng } from "./export-utils";
 import { exportErrorMessage, readImageData } from "./image-data";
 import { CanvasReplica } from './canvas-replica';
 import { CanvasBackups } from './canvas-backups';
+import { ProjectShare } from './project-share';
 import { readSnapshot, type Snapshot } from '@context-flow/collaboration';
 import type { SyncState } from './collaboration-connection';
 
@@ -1208,7 +1209,7 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
   const replaceMessageIndex = useRef<number | undefined>(undefined);
   const activeConversation = useRef("general");
   const currentUser = useAuthStore((state) => state.user);
-  const canEdit = project?.role !== "viewer" && (!project?.collaborationEnabled || collaborationReady);
+  const canEdit = Boolean(project) && project?.role !== "viewer" && (!project?.collaborationEnabled || collaborationReady);
   const prepareTour = useCallback(() => {
     setCollapsed({ pool: false, zone: false, diverge: false, converge: false });
   }, []);
@@ -1969,6 +1970,25 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
     };
   }, [projectId, setNodes, setEdges]);
   useEffect(() => {
+    if (!project?.projectInvitesEnabled) return;
+    let active = true;
+    let checking = false;
+    const check = async () => {
+      if (checking) return;
+      checking = true;
+      try { const next = await getProject(projectId); if (active) setProject(next); }
+      catch (error) {
+        if (active && error instanceof ApiError && (error.status === 403 || error.status === 404)) {
+          setError('專案存取權限已變更，請返回工作區。'); setProject(null);
+        }
+      } finally { checking = false; }
+    };
+    const timer = window.setInterval(() => void check(), 15_000);
+    const onFocus = () => void check();
+    window.addEventListener('focus', onFocus);
+    return () => { active = false; window.clearInterval(timer); window.removeEventListener('focus', onFocus); };
+  }, [projectId, project?.projectInvitesEnabled]);
+  useEffect(() => {
     if (!project?.collaborationEnabled) return;
     let active = true;
     let disconnect: (() => void) | undefined;
@@ -2467,7 +2487,7 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
       </div>
     );
   if (!project)
-    return <div className="p-8 text-destructive">{error || "找不到專案"}</div>;
+    return <div className="space-y-4 p-8"><p role="alert" className="text-destructive">{error || "找不到專案"}</p><Button variant="outline" onClick={() => router.push('/workspaces')}>返回工作區</Button></div>;
   return (
     <div
       ref={root}
@@ -2491,6 +2511,7 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
         </div>
         <ProductTour key={project.id} stage="canvas" readOnly={!canEdit} onBeforeStart={prepareTour} />
         <Badge>{project.role}</Badge>
+        {project.projectInvitesEnabled && (project.role === 'owner' || project.role === 'admin') && <ProjectShare key={`share-${project.id}`} projectId={project.id} />}
         {project.canvasBackupEnabled && (project.role === 'owner' || project.role === 'admin') && <CanvasBackups key={`backups-${project.id}`} projectId={project.id} synced={collaborationStatus === 'synced'} />}
         {project.collaborationEnabled && <span role="status" data-tour="canvas-save" data-collaboration-status={collaborationStatus} className="text-xs text-muted" aria-live="polite">
           {collaborationStatus === 'synced' ? `已同步 · ${otherEditors + 1} 人在線` : collaborationStatus === 'syncing' ? '同步中…' : collaborationStatus === 'offline' ? '連線中斷，重連後自動合併；請勿關閉此頁' : collaborationStatus === 'error' ? '共編連線失敗，請保留此頁並檢查連線' : '正在連接共編…'}

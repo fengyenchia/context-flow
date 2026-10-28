@@ -27,4 +27,9 @@ describe('cross-instance collaboration authorization fence', () => {
     for (const [route, method] of [['projects/p/canvas', 'GET'], ['ai/chat', 'POST']]) await withCollaborationLock(route, method, async () => 'ok');
     expect(mocks.connected).not.toHaveBeenCalled();
   });
+  it('serializes invitation acceptance and revocation even when realtime is disabled', async () => {
+    vi.stubEnv('COLLABORATION_ENABLED', 'false'); vi.stubEnv('PROJECT_INVITES_ENABLED', 'true');
+    for (const [route, method] of [['project-invitations/accept', 'POST'], ['projects/p/invite-links/link', 'DELETE']]) await withCollaborationLock(route, method, async () => 'ok');
+    expect(mocks.connected).toHaveBeenCalledTimes(2);
+  });
 });

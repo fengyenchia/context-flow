@@ -9,6 +9,8 @@ export const collectionNames = [
   'workspaces',
   'memberships',
   'projects',
+  'projectLinks',
+  'projectGrants',
   'invitations',
   'sessions',
   'credentials',
@@ -136,6 +138,15 @@ export async function persistChanges(state: MemoryState, baseline: Baseline) {
               .onConflictDoUpdate({ target: tables.projects.id, set: values }),
       );
     }
+  for (const [id, link] of state.projectLinks)
+    if (changed('projectLinks', id, link)) {
+      const values = { ...link, expiresAt: asDate(link.expiresAt)!, revokedAt: asDate(link.revokedAt) };
+      queries.push(baseline.projectLinks.has(id)
+        ? database.update(tables.projectInviteLinks).set(changedFields(values, baseline.projectLinks.get(id))).where(eq(tables.projectInviteLinks.id, id))
+        : database.insert(tables.projectInviteLinks).values(values));
+    }
+  for (const [id, grant] of state.projectGrants)
+    if (changed('projectGrants', id, grant)) queries.push(database.insert(tables.projectInviteGrants).values(grant).onConflictDoNothing());
   for (const [id, invitation] of state.invitations)
     if (changed('invitations', id, invitation)) {
       const values = {
@@ -353,6 +364,8 @@ export async function persistChanges(state: MemoryState, baseline: Baseline) {
     }
   // Deletes are bounded to records present in the request's baseline.
   for (const [name, table, column] of [
+    ['projectGrants', tables.projectInviteGrants, tables.projectInviteGrants.id],
+    ['projectLinks', tables.projectInviteLinks, tables.projectInviteLinks.id],
     ['documents', tables.documents, tables.documents.id],
     [
       'invitations',

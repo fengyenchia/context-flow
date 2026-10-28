@@ -95,7 +95,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         return;
       }
       setSession(data.accessToken, data.user);
-      router.push("/workspaces");
+      router.push(window.sessionStorage.getItem('contextflow-pending-project-invite') ? '/project-invite' : '/workspaces');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "無法完成操作");
     } finally {

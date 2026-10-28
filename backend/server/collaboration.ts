@@ -55,6 +55,10 @@ export async function syncRoomPermissions(projectId: string, create = false, rev
     if (member.workspaceId !== project.workspaceId || state.users.get(member.userId)?.status !== 'active') continue;
     usersAccesses[member.userId] = member.role === 'viewer' ? ['room:read', 'room:presence:write'] : ['room:write'];
   }
+  for (const grant of state.projectGrants.values()) {
+    const role = state.projectRole(projectId, grant.userId);
+    if (role && state.projectLinks.get(grant.linkId)?.projectId === projectId) usersAccesses[grant.userId] = role === 'viewer' ? ['room:read', 'room:presence:write'] : ['room:write'];
+  }
   if (revokeOnly) {
     for (const [userId, desired] of Object.entries(usersAccesses)) {
       const previous = room.usersAccesses[userId] || [];
@@ -72,7 +76,7 @@ export async function syncWorkspaceRooms(workspaceId: string, revokeOnly = false
 }
 export async function authorizeCollaboration(projectId: string, user: User) {
   const project = state.project(projectId);
-  state.requireRole(project.workspaceId, user.id, ['owner', 'admin', 'editor', 'viewer']);
+  state.requireProjectRole(project.id, user.id, ['owner', 'admin', 'editor', 'viewer']);
   if (!collaborationEnabled()) throw new ApiProblem(503, '即時共編尚未啟用');
   const { client, id } = await ensureRoom(projectId);
   await syncRoomPermissions(projectId, true);
