@@ -32,7 +32,7 @@ async function fixture(page: Page, role = 'owner') {
   });
   await page.context().routeWebSocket('**/__test-collaboration/**', socket => {
     socket.send(JSON.stringify({ hello: true, update: [...Y.encodeStateAsUpdate(doc)] }));
-    socket.onMessage(data => { const update = new Uint8Array(JSON.parse(String(data)).update); Y.applyUpdate(doc, update); socket.send(JSON.stringify({ update: [...update] })); });
+    socket.onMessage(data => { const payload = JSON.parse(String(data)); if (!Array.isArray(payload.update)) return; const update = new Uint8Array(payload.update); Y.applyUpdate(doc, update); socket.send(JSON.stringify({ update: [...update] })); });
   });
   await page.goto('/workspaces/shared/projects/source');
   await expect(page.locator('[data-collaboration-status]')).toHaveAttribute('data-collaboration-status', 'synced', { timeout: 120_000 });

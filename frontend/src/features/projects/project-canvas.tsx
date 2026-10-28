@@ -48,6 +48,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ComponentProps,
@@ -85,9 +86,11 @@ import { CanvasBackups } from './canvas-backups';
 import { ProjectShare } from './project-share';
 import { readSnapshot, type Snapshot } from '@context-flow/collaboration';
 import type { SyncState } from './collaboration-connection';
+import { createPresenceStore, type CursorArea } from './canvas-presence';
+import { CanvasPresenceContext, CanvasCursorLayer, OnlineCollaborators } from './collaboration-cursors';
 
-type FlowProps = ComponentProps<typeof BaseReactFlow>;
-function ReactFlow(props: FlowProps) {
+type FlowProps = ComponentProps<typeof BaseReactFlow> & { presenceArea: CursorArea };
+function ReactFlow({ presenceArea, ...props }: FlowProps) {
   const groups = new Map(
     (props.nodes || [])
       .filter(
@@ -186,6 +189,7 @@ function ReactFlow(props: FlowProps) {
     >
       {props.children}
       <MiniMapToggle />
+      <CanvasCursorLayer area={presenceArea} />
     </BaseReactFlow>
   );
 }
@@ -1144,6 +1148,9 @@ function EditableUserMessage({
 
 export function ProjectCanvas({ projectId }: { projectId: string }) {
   const router = useRouter();
+  // A routed project gets its own presence store before the old room disconnects.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const presence = useMemo(() => createPresenceStore(), [projectId]);
   const root = useRef<HTMLDivElement>(null);
   const canvasHydrated = useRef(false);
   const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
@@ -2028,7 +2035,8 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
         setOtherEditors(count);
         unsaved.current = status !== 'synced';
       },
-    })).then(cleanup => { if (active) disconnect = cleanup; else cleanup(); }).catch(() => { if (active) setCollaborationStatus('error'); });
+      presence: people => { if (active) presence.setParticipants(people); },
+    })).then(cleanup => { if (active) { disconnect = cleanup; presence.bind(cleanup.updateCursor); } else cleanup(); }).catch(() => { if (active) { presence.reset(); setCollaborationStatus('error'); } });
     const captureNode = (event: Event) => { const detail = (event as CustomEvent<{ id: string }>).detail; if (detail) replica.current?.captureDraft(detail.id); };
     const captureEdge = (event: Event) => { const detail = (event as CustomEvent<{ id: string }>).detail; if (detail) replica.current?.captureDraft(detail.id, true); };
     const saveDraft = (event: Event) => {
@@ -2042,6 +2050,7 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
     window.addEventListener('context-flow:update-edge', saveDraft, true);
     return () => {
       active = false;
+      presence.reset();
       replica.current?.destroy(); replica.current = null;
       replicaProject.current = null;
       disconnect?.();
@@ -2489,6 +2498,7 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
   if (!project)
     return <div className="space-y-4 p-8"><p role="alert" className="text-destructive">{error || "找不到專案"}</p><Button variant="outline" onClick={() => router.push('/workspaces')}>返回工作區</Button></div>;
   return (
+    <CanvasPresenceContext.Provider value={project.collaborationEnabled ? presence : null}>
     <div
       ref={root}
       data-project-canvas
@@ -2516,6 +2526,7 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
         {project.collaborationEnabled && <span role="status" data-tour="canvas-save" data-collaboration-status={collaborationStatus} className="text-xs text-muted" aria-live="polite">
           {collaborationStatus === 'synced' ? `已同步 · ${otherEditors + 1} 人在線` : collaborationStatus === 'syncing' ? '同步中…' : collaborationStatus === 'offline' ? '連線中斷，重連後自動合併；請勿關閉此頁' : collaborationStatus === 'error' ? '共編連線失敗，請保留此頁並檢查連線' : '正在連接共編…'}
         </span>}
+        {project.collaborationEnabled && <OnlineCollaborators />}
         {project.role !== "viewer" && !project.collaborationEnabled && (
           <span data-tour="canvas-save" role="status" className="text-xs text-muted" aria-live="polite">
             {saveStatus === "saving" ? (
@@ -2773,6 +2784,7 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
           >
             <div className="relative min-h-0 flex-1 canvas-grid">
               <ReactFlow
+                presenceArea="zone"
                 nodes={nodes.filter(
                   (node) => !String(node.id).startsWith("diverge-"),
                 )}
@@ -2819,6 +2831,7 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
           >
             <div className="relative flex min-h-0 flex-1 flex-col canvas-grid">
               <ReactFlow
+                presenceArea="diverge"
                 nodes={nodes.filter((node) =>
                   String(node.id).startsWith("diverge-"),
                 )}
@@ -2879,6 +2892,7 @@ export function ProjectCanvas({ projectId }: { projectId: string }) {
         </div>
       </div>
     </div>
+    </CanvasPresenceContext.Provider>
   );
 }
 function AreaHeader({
@@ -3812,6 +3826,7 @@ function ConvergenceNodeLayer({ editable = true }: { editable?: boolean }) {
   return (
     <div className="relative min-h-48 min-w-0 flex-1 canvas-grid">
       <ReactFlow
+        presenceArea="converge"
         nodes={nodes}
         edges={edges}
         onNodesChange={editable ? onNodesChange : undefined}

@@ -6,7 +6,7 @@
 | --- | --- |
 | `pnpm test` | 前後端單元測試：持久化交易、節點位置、匯出座標、檔案確認與登入狀態 |
 | `pnpm test:e2e:api` | 註冊、驗證、登入、工作區、角色權限、專案、畫布保存與錯誤回滾 |
-| `pnpm exec playwright test e2e/collaboration.spec.ts` | 雙使用者 CRDT 合併、三區／資料池／連線同步、離線重連與唯讀角色；使用隔離 WebSocket fixture |
+| `pnpm exec playwright test e2e/collaboration.spec.ts` | 雙使用者 CRDT 合併、三區／資料池／連線同步、離線重連、唯讀角色、在線名稱與游標座標／離開清除；使用隔離 WebSocket fixture |
 | `pnpm exec playwright test e2e/canvas-backups.spec.ts` | 備份清單、立即備份、錯誤重試、還原確認／導向新專案、Esc／焦點與唯讀角色；API 使用替身 |
 | `pnpm exec playwright test e2e/project-invites.spec.ts` | 建立連結、登入導回、接受與重試、受邀清單、檢視／編輯與正在開啟中的撤權 |
 | `node scripts/test-db.mjs --collaboration-only` | 專用 Neon 測試連線的跨連線 advisory lock；無 migration、無應用資料表讀寫 |

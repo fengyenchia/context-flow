@@ -409,7 +409,7 @@ export async function persistChanges(state: MemoryState, baseline: Baseline) {
       if ((record.cause?.code || record.code) === '22012')
         throw new ApiProblem(
           409,
-          '此畫布已被其他視窗更新，請先匯出本機 JSON，再重新載入',
+          '此畫布已被其他視窗更新，請先複製未儲存文字或匯出 PNG，再重新載入',
         );
       throw error;
     }

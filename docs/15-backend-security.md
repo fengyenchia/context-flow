@@ -4,7 +4,7 @@
 
 ## 已有保護與邊界
 
-程式已有 JWT／session、Email 驗證、角色授權、scrypt、AI Key 加密、私人檔案授權與畫布版本檢查。`backend/server/rate-limit.ts` 對 login、register、forgot-password、reset-password、resend-verification 分別以 IP／路徑做每程序 30 次／15 分鐘限制；程序重啟或不同實例不共用計數。
+程式已有 JWT／session、Email 驗證、角色授權、scrypt、AI Key 加密、私人檔案授權與畫布版本檢查。`backend/server/rate-limit.ts` 對 login、register、forgot-password、reset-password、resend-verification，以及專案邀請的 preview／accept，分別以 IP／路徑做每程序 30 次／15 分鐘限制；程序重啟或不同實例不共用計數。
 
 平台層補上跨實例流量限制，不取代程式授權。Vercel 計數按 region，不能宣稱為全球唯一計數器。
 

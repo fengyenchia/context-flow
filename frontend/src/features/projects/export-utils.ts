@@ -157,6 +157,7 @@ async function capturePages(
         ),
       );
       const clone = flow.cloneNode(true) as HTMLElement;
+      clone.querySelectorAll('[data-collaboration-presence]').forEach(element => element.remove());
       Object.assign(clone.style, {
         width: "1000px",
         height: "650px",

@@ -9,7 +9,9 @@
 - 可另啟用 [畫布自動備份與還原](17-canvas-backups.md)，透過已簽章 Webhook 將歷史版本與附件副本保存到私人 R2；還原成新專案，不覆蓋使用中的房間。
 - 第一次開啟專案時由 Backend 匯入原快照；固定的匯入操作 ID 可避免兩人同時首次開啟造成重複內容。之後只讀取共編文件，不反覆套用舊快照。
 - 節點以 ID、欄位分開合併，文字使用 Y.Text；正在編輯的視窗保留自己的基底，儲存時不會把未修改的舊欄位蓋回去。相同非文字欄位（例如同時選不同底色、拖曳同一節點）仍只能有一個結果，Yjs 會決定一致結果；不代表同時保留兩個位置或自動理解文字語意。
-- 刪除節點優先於對已刪除節點的連線；選取、視角、測量值不共用。這版不提供遠端游標或文字輸入中的逐字顯示；節點對話框按儲存後即同步。
+- 刪除節點優先於對已刪除節點的連線；選取、視角、測量值不共用。節點對話框按儲存後即同步，不傳送尚未儲存的逐字輸入。
+- 頁首顯示其他在線者名稱，三區各顯示該區的遠端游標與名稱；游標按畫布座標換算，雙方縮放或平移不同仍指向相同位置。檢視者也能顯示游標，但不會取得編輯權限。
+- 游標使用 Liveblocks Presence；移出畫布、切換分頁或離線即隱藏。它不寫入 Yjs 文件、歷史備份、PDF 或 PNG。頁首名字依帳號合併顯示；在線人數仍按連線計算。
 
 ## 設定
 
@@ -45,8 +47,10 @@ node scripts/test-db.mjs --collaboration-only
 - 單元測試使用兩份真正的 Yjs 文件，檢查欄位／文字／訊息合併、刪除、重複傳送、舊快照匯入與還原。
 - Backend API 測試 mock Liveblocks，檢查授權、viewer、移除／降權、舊版 PUT 拒絕及未設定服務時的拒絕策略。
 - `--collaboration-only` 使用既有隔離檢查及 `TEST_DATABASE_URL`，只在兩條 Neon 連線取得／釋放 advisory lock；不執行 migration，不修改資料表或帳號，原本 production `DATABASE_URL` 不變。
-- 瀏覽器測試使用不同登入身分與獨立 context，透過本機 WebSocket fixture 執行實際畫布操作、斷線重連及重載。隔離開發伺服器才會替換雲端傳輸，正式 build 固定使用官方 provider。這些測試不驗證真實 Liveblocks 的憑證、ACL 即時生效、配額或雲端持久化。
+- 瀏覽器測試使用不同登入身分與獨立 context，透過本機 WebSocket fixture 執行實際畫布操作、斷線重連及重載，並檢查游標區域、座標換算、檢視者、離線清除與文件不變。隔離開發伺服器才會替換雲端傳輸，正式 build 固定使用官方 provider。這些測試不驗證真實 Liveblocks 的憑證、ACL 即時生效、配額或雲端持久化。
 
 設定服務後，仍需以正式／隔離 Liveblocks 專案驗收：兩個不同帳號同開一個專案、同改不同節點、同開一節點視窗分別前後加字、斷線後重連、所有人關頁再重開、viewer 嘗試編輯、將正在連線的 editor 改成 viewer／移除並確認不能再寫入。先使用可刪除的測試專案，不使用真實敏感內容。
 
-參考：[Yjs provider](https://liveblocks.io/docs/api-reference/liveblocks-yjs)、[Backend 與 ID token](https://liveblocks.io/docs/api-reference/liveblocks-node)。
+正式站更新游標功能後，以兩帳號同開可刪除專案，確認另一人的名稱、三區游標、不同縮放位置及離開隱藏。沿用既有 Liveblocks 服務與房間權限，不需新增環境變數或 migration。
+
+參考：[Yjs provider](https://liveblocks.io/docs/api-reference/liveblocks-yjs)、[Backend 與 ID token](https://liveblocks.io/docs/api-reference/liveblocks-node)、[Presence](https://liveblocks.io/docs/api-reference/liveblocks-client)。

@@ -18,6 +18,8 @@ async function fixture(browser: Browser, text = '原文') {
   snapshot.nodes[0].data.nodeContent = text;
   const server = seedDocument(snapshot);
   const sockets = new Map<WebSocketRoute, string>();
+  const presence = new Map<WebSocketRoute, unknown>();
+  const broadcastPresence = () => { for (const peer of sockets.keys()) peer.send(JSON.stringify({ participants: [...presence].filter(([source]) => source !== peer).map(([, person]) => person) })); };
   const blocked = new Set<string>();
   const contexts: BrowserContext[] = [];
   let writes = 0;
@@ -41,12 +43,15 @@ async function fixture(browser: Browser, text = '原文') {
       sockets.set(socket, name);
       socket.send(JSON.stringify({ hello: true, update: [...Y.encodeStateAsUpdate(server)] }));
       socket.onMessage(data => {
+        const payload = JSON.parse(String(data));
+        if (payload.presence) { presence.set(socket, payload.presence); broadcastPresence(); return; }
+        if (!Array.isArray(payload.update)) return;
         if (role === 'viewer') return;
-        const update = new Uint8Array(JSON.parse(String(data)).update);
+        const update = new Uint8Array(payload.update);
         Y.applyUpdate(server, update);
         for (const peer of sockets.keys()) peer.send(JSON.stringify({ update: [...update] }));
       });
-      socket.onClose(() => sockets.delete(socket));
+      socket.onClose(() => { sockets.delete(socket); presence.delete(socket); broadcastPresence(); });
     });
     const page = await context.newPage();
     await page.goto(url);
@@ -55,7 +60,7 @@ async function fixture(browser: Browser, text = '原文') {
   }
   return {
     server, client,
-    offline: (name: string) => { blocked.add(name); for (const [socket, user] of sockets) if (name === user) socket.close(); },
+    offline: (name: string) => { blocked.add(name); for (const [socket, user] of sockets) if (name === user) { sockets.delete(socket); presence.delete(socket); socket.close(); } broadcastPresence(); },
     online: (name: string) => blocked.delete(name),
     close: async () => { expect(writes).toBe(0); for (const context of contexts) await context.close(); server.destroy(); },
   };
@@ -142,5 +147,37 @@ test('simultaneous multi-position text changes preserve untouched text without d
     await b.getByLabel('內容', { exact: true }).fill('abCDef');
     await Promise.all([save(a), save(b)]);
     for (const page of [a, b]) await expect(node(page, 'zone-a')).toContainText('AbCDeF');
+  } finally { await f.close(); }
+});
+
+test('cursor presence follows the correct area and viewport, supports viewers, and disappears on leave', async ({ browser }, testInfo) => {
+  const f = await fixture(browser);
+  try {
+    const a = await f.client('alice'), b = await f.client('bob'), viewer = await f.client('viewer', 'viewer');
+    await expect(b.locator('[aria-label="其他在線協作者"]')).toContainText('alice');
+    await expect(b.locator('[aria-label="其他在線協作者"]')).toContainText('viewer');
+    await expect(node(a, 'zone-a')).toBeVisible();
+    const pane = (page: Page, area = 'zone') => page.locator(`[data-canvas-area="${area}"] .react-flow`);
+    await pane(b).getByRole('button', { name: 'Zoom In', exact: true }).click();
+    await a.bringToFront();
+    const box = (await pane(a).boundingBox())!;
+    const point = { x: box.x + box.width * 0.7, y: box.y + box.height * 0.45 };
+    const baseline = readSnapshot(f.server);
+    await a.mouse.move(point.x, point.y);
+    const cursor = b.locator('[data-remote-cursor][data-cursor-user="alice"][data-cursor-area="zone"]');
+    await expect(cursor).toBeVisible();
+    const sourceTransform = await pane(a).locator('.react-flow__viewport').evaluate(el => { const matrix = new DOMMatrixReadOnly(getComputedStyle(el).transform); return { x: matrix.e, y: matrix.f, zoom: matrix.a }; });
+    const flow = { x: (point.x - box.x - sourceTransform.x) / sourceTransform.zoom, y: (point.y - box.y - sourceTransform.y) / sourceTransform.zoom };
+    const actual = await cursor.evaluate(el => ({ x: parseFloat((el as HTMLElement).style.left), y: parseFloat((el as HTMLElement).style.top) }));
+    expect(actual.x).toBeCloseTo(flow.x, 0); expect(actual.y).toBeCloseTo(flow.y, 0);
+    await b.screenshot({ path: testInfo.outputPath('collaboration-presence.png') });
+    await a.mouse.move(5, 5); await expect(cursor).toHaveCount(0);
+    await viewer.bringToFront(); const viewerBox = (await pane(viewer, 'diverge').boundingBox())!;
+    await viewer.mouse.move(viewerBox.x + viewerBox.width * 0.6, viewerBox.y + 100);
+    await expect(a.locator('[data-remote-cursor][data-cursor-user="viewer"][data-cursor-area="diverge"]')).toBeVisible();
+    expect(readSnapshot(f.server)).toEqual(baseline);
+    f.offline('viewer');
+    await expect(a.locator('[data-remote-cursor][data-cursor-user="viewer"]')).toHaveCount(0);
+    await expect(a.locator('[aria-label="其他在線協作者"]')).not.toContainText('viewer');
   } finally { await f.close(); }
 });

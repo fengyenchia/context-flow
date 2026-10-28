@@ -48,7 +48,7 @@ async function fixture(browser: Browser) {
     });
     await context.routeWebSocket('**/__test-collaboration/**', socket => {
       sockets.add(socket); socket.send(JSON.stringify({ hello: true, update: [...Y.encodeStateAsUpdate(doc)] }));
-      socket.onMessage(data => { if (name !== 'owner' && (role !== 'editor' || revoked)) return; const update = new Uint8Array(JSON.parse(String(data)).update); Y.applyUpdate(doc, update); for (const peer of sockets) peer.send(JSON.stringify({ update: [...update] })); });
+      socket.onMessage(data => { if (name !== 'owner' && (role !== 'editor' || revoked)) return; const payload = JSON.parse(String(data)); if (!Array.isArray(payload.update)) return; const update = new Uint8Array(payload.update); Y.applyUpdate(doc, update); for (const peer of sockets) peer.send(JSON.stringify({ update: [...update] })); });
       socket.onClose(() => sockets.delete(socket));
     });
     return context.newPage();

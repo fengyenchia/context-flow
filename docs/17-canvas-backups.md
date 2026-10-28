@@ -42,6 +42,8 @@ Webhook 通知有節流，因此不是每次按鍵都會產生一份備份，也
 
 排程時間為每日 UTC 03:17（台灣 11:17）。Liveblocks 失敗交付與 Inngest 失敗工作應修復後重試。停用保留旗標會停止限制與清理，但基本 Webhook 備份仍會持續新增。Inngest 未設定或排程送出失敗時會回報失敗，避免把漏掉最後一次變更當作成功。
 
+Inngest 只註冊備份與清理工作，不註冊文件索引。更新 Backend 後可在 app 的 **Resync** 同步工作清單；同時啟用原檔清理時，總共應有上述三個工作，以及 `original-project-file-cleanup`、`daily-original-file-cleanup`。不需新增 key。
+
 ## 還原
 
 1. 以工作區 owner 或 admin 開啟專案，按「畫布備份」。editor／viewer 不提供備份或還原操作。

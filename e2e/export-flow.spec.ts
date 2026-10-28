@@ -137,6 +137,23 @@ test("失效圖片不阻斷 PNG ZIP 與 PDF，保留節點連線並提示缺圖"
   });
   await fixture.open();
   await expect(page.locator(".react-flow__node")).toHaveCount(4);
+  // Presence belongs only to the live view. Observe the actual export clones
+  // used for both PNG and PDF, rather than relying on hidden CSS.
+  await page.evaluate(() => {
+    const marker = document.createElement('div');
+    marker.dataset.collaborationPresence = '';
+    marker.textContent = 'REMOTE_CURSOR_EXPORT_SENTINEL';
+    document.querySelector('.react-flow__viewport')!.append(marker);
+    document.documentElement.dataset.presenceLeaked = 'false';
+    document.documentElement.dataset.exportFrames = '0';
+    new MutationObserver(() => {
+      const stage = document.querySelector('[data-export-stage]');
+      if (stage?.querySelector('.react-flow__node')) {
+        document.documentElement.dataset.exportFrames = String(Number(document.documentElement.dataset.exportFrames) + 1);
+        if (stage.querySelector('[data-collaboration-presence]') || stage.textContent?.includes('REMOTE_CURSOR_EXPORT_SENTINEL')) document.documentElement.dataset.presenceLeaked = 'true';
+      }
+    }).observe(document.body, { childList: true, subtree: true });
+  });
   // Reproduce the underlying pre-fix failure: html-to-image rejects an Event
   // when a cloned image's persisted blob URL is no longer available.
   await page.addScriptTag({
@@ -250,6 +267,9 @@ test("失效圖片不阻斷 PNG ZIP 與 PDF，保留節點連線並提示缺圖"
   });
   await pdfPage.close();
   await expect(page.locator("[data-export-stage]")).toHaveCount(0);
+  await expect(page.locator('html')).toHaveAttribute('data-presence-leaked', 'false');
+  expect(Number(await page.locator('html').getAttribute('data-export-frames'))).toBeGreaterThan(1);
+  await expect(page.getByText('REMOTE_CURSOR_EXPORT_SENTINEL', { exact: true })).toHaveCount(1);
 });
 
 test("本機圖片保存實際內容，重載後仍可 PNG 與 PDF 匯出", async ({
