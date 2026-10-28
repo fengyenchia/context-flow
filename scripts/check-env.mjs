@@ -80,7 +80,11 @@ if (backend.CANVAS_BACKUP_RETENTION_ENABLED === 'true') {
   check('備份限制需先啟用畫布備份', backend.CANVAS_BACKUP_ENABLED === 'true');
   check('Inngest 備份排程 Event key / Signing key', Boolean(backend.INNGEST_EVENT_KEY && backend.INNGEST_SIGNING_KEY));
 }
-console.log('不輸出密鑰；不檢查 Vercel 上的環境變數；備份限制啟用時才需要 Inngest，RAG 不需要設定。');
+if (backend.R2_PROJECT_CLEANUP_ENABLED === 'true') {
+  check('原始檔清理 Inngest Event key / Signing key', Boolean(backend.INNGEST_EVENT_KEY && backend.INNGEST_SIGNING_KEY));
+  check('原始檔清理不可使用備份 bucket', backend.R2_BUCKET_NAME !== backend.CANVAS_BACKUP_BUCKET_NAME);
+}
+console.log('不輸出密鑰；不檢查 Vercel 上的環境變數；備份限制或原檔清理啟用時需要 Inngest，RAG 不需要設定。');
 check(
   "TEST_DATABASE_URL（選用；未設定就無法驗收 Neon 重啟）",
   Boolean(testUrl),

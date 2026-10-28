@@ -150,6 +150,7 @@ test("註冊驗證、登入、個人/共享工作區、專案、三區節點儲�
   await expect(
     page.getByRole("dialog", { name: "刪除專案", exact: true }),
   ).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "刪除專案", exact: true })).toContainText("上傳原檔會於寬限期後清除");
   await expect(
     page.getByRole("button", { name: "確定刪除", exact: true }),
   ).toBeDisabled();

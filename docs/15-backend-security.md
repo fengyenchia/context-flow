@@ -57,6 +57,7 @@
 - Production secrets 不套用到 Preview；不把 TEST_DATABASE_URL 放平台、不更換原本 production URL／加密 key。
 - 設定可用的錯誤／用量通知與費用控制；確認備份保留及還原步驟，不因設定 WAF 重跑 migration。
 - 只分享遮罩後的設定畫面與事件路徑，不分享 cookie、Authorization、HAR、預簽網址或私有檔案內容。
+- Inngest 的 `/api/inngest` 需可接收平台簽章請求，不套互動式 Challenge。畫布備份、備份副本清理及原始檔清理各依旗標控制；Neon 還原／搬檔前先暫停原檔清理並等執行中的批次結束。原上傳 bucket 不設繞過引用核對的到期規則。
 
 ## 來源
 

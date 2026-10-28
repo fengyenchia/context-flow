@@ -23,6 +23,7 @@ if (!(Test-Path frontend/.env.local)) { Copy-Item frontend/.env.example frontend
 - 自動化測試使用 [隔離測試入口](10-e2e-testing.md)，避免寫入正式資料庫。
 - 未設定 Resend 時，開發模式把驗證／重設連結印在 backend console；註冊仍須完成驗證。
 - R2 未設定時不能上傳原始檔，文字／連結與一般節點不依賴 R2。
+- `R2_PROJECT_CLEANUP_ENABLED` 預設關閉。測試清理時使用隔離 R2／Neon／Inngest 環境，不在本機對正式上傳 bucket 啟用；規則見 [原檔清理](03-cloudflare-r2.md#刪除專案後清理原始檔)。
 - AI 需要 base64 32-byte 的 `USER_API_KEY_ENCRYPTION_KEY`；已有資料時沿用原值，使用者 Key 在介面設定，見 [Gemini](04-gemini-api-key.md)。
 
 環境變數範本見 `backend/.env.example`、`frontend/.env.example`。

@@ -51,7 +51,7 @@ async function finish(page: Page, titles: string[]) {
   await expect(page.getByRole('alertdialog')).toHaveCount(0);
 }
 
-const workspaceTitles = ['從工作區開始', '建立第一個專案', '需要團隊協作時', '隨時重看教學'];
+const workspaceTitles = ['從工作區開始', '建立第一個專案', '邀請別人一起整理', '隨時重看教學'];
 const canvasTitles = ['先放入資料', '新增與雙擊編輯節點', '移動節點與建立連線', '在這裡發散想法', '用 AI 延伸思考', '從發散整理成結論', '等「已儲存」再離開', '匯出 PDF 或 PNG', '開始整理你的畫布'];
 
 test('registration arms onboarding; workspace completion continues into the first canvas without changing data', async ({ page }, testInfo) => {

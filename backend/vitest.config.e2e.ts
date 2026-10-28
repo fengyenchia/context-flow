@@ -30,6 +30,7 @@ export default defineConfig({
       CANVAS_BACKUP_BUCKET_NAME: '',
       PROJECT_INVITES_ENABLED: 'false',
       CANVAS_BACKUP_RETENTION_ENABLED: 'false',
+      R2_PROJECT_CLEANUP_ENABLED: 'false',
       INNGEST_EVENT_KEY: '',
       INNGEST_SIGNING_KEY: '',
     },

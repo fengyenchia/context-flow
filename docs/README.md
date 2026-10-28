@@ -8,7 +8,7 @@
 | 一般使用者操作、節點編輯、共享與匯出 | [使用手冊](https://context-flow.fengyenchia.com/guide)（網站 `/guide`，從首頁開啟） |
 | 本機安裝與開發模式 | [01 本機開發](01-local-development.md) |
 | Neon、migration 與測試連線 | [02 Neon](02-neon-database.md) |
-| R2 上傳／下載與 CORS | [03 R2](03-cloudflare-r2.md) |
+| R2 上傳／下載、CORS 與刪除後原檔清理 | [03 R2](03-cloudflare-r2.md) |
 | 使用者 Gemini Key | [04 Gemini](04-gemini-api-key.md) |
 | JWT、管理員與密碼重設 | [07 帳號安全](07-jwt-and-admin.md) |
 | Vercel 與正式網域 | [08 部署](08-vercel-deployment.md) |

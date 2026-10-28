@@ -40,6 +40,7 @@ PNG 測試檢查 ZIP 分片、尺寸、節點底色、文字像素及缺圖處�
 - API 測試使用記憶體資料、郵件、Gemini 及 Liveblocks SDK 替身，不發出真實寄信、雲端共編或付費 AI 請求。測試啟動器清空 Liveblocks 密鑰並停用共編旗標，個別共編測試才注入替身。
 - 備份 API 測試用官方 Webhook 簽章驗證器與真正的 Yjs 文件，R2／Liveblocks／Inngest 使用替身；檢查跨專案隔離、角色、失敗重試、附件還原、去重、15 分鐘間隔、50 份／30 天限制及安全清理。單元測試另驗證延後與每日排程；`node scripts/test-db.mjs --collaboration-only` 同時檢查共編與備份的 Neon 跨連線鎖，不執行 migration 或修改應用資料表。真實服務設定與交付驗收見 [畫布備份](17-canvas-backups.md)。
 - 專案邀請 API 測試檢查期限、撤銷、聯集授權與工作區／專案隔離。Neon 測試另驗證新資料表 migration、獨立重新載入後的角色／撤銷保存；正式啟用步驟見 [專案邀請](18-project-invitations.md)。
+- 原始檔清理 API 測試檢查 owner 刪除／editor 拒絕、交易失敗回滾、首次確認後 24 小時、延遲上傳、跨專案引用、備份與還原路徑保護、分批續跑、失敗重試及停用旗標。單元測試檢查新鮮 Neon 查詢與 Inngest 每日／接續工作，使用 R2 替身與模擬時間，不等待一天、不刪正式檔案。設定後的真實服務驗收見 [R2](03-cloudflare-r2.md#驗收)。
 - 瀏覽器測試從開發郵件日誌取得驗證連結，再操作正常的 Email 驗證頁。
 - `pnpm test:db` 另讀取 `backend/.env.test.local` 的 `TEST_DATABASE_URL`，只允許獨立、可丟棄的 Neon 分支。
 - DB 測試以獨立 Node 程序重新連線驗證保存結果；父程序的 probe 依設計跳過，由子程序執行。

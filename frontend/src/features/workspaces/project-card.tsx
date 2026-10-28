@@ -132,7 +132,7 @@ export function ProjectCard({
           ) : (
             <>
               <p className="rounded-primary border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
-                刪除後無法復原，畫布與檔案紀錄也會移除。
+                刪除後無法從此處復原，畫布與檔案紀錄也會移除。啟用自動清理時，上傳原檔會於寬限期後清除。
               </p>
               <label htmlFor={`delete-${project.id}`} className="block text-sm">
                 輸入「{project.name}」確認刪除

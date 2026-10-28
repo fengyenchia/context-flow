@@ -41,11 +41,13 @@
    pnpm --filter @context-flow/backend db:migrate
    ```
 
-   只會套用 ledger 尚未記錄的 migration。既有正式庫的 0003 hash 差異處理規則見 [Neon 指南](02-neon-database.md)，不要重跑或覆寫。
+   只會套用 ledger 尚未記錄的 migration。若已套用版本的 hash 與檔案不同，依 [Neon 指南](02-neon-database.md) 核對，不重跑或覆寫。
 4. Vercel **Backend / Production** 新增 `PROJECT_INVITES_ENABLED=true`，重新部署。Frontend 不需要新變數，不需要新增 Liveblocks／R2／Inngest 服務。
 5. 用測試專案與非工作區成員帳號驗收檢視、編輯、到期與撤銷。確認 Liveblocks 真實房間 ACL 已收回，不能只看前端按鈕。
 
 若要停用此功能，先在仍啟用時撤銷所有尚有效的邀請連結，確認房間 ACL 已收權，再停用旗標。直接關閉旗標不能代替已發出雲端權限的撤銷，也不要刪除資料表作為回退。
+
+刪除專案仍僅限工作區擁有者／管理員，受邀編輯者不能操作。刪除會移除該專案的連結及加入授權；原始附件若啟用清理，另依 [R2 寬限期規則](03-cloudflare-r2.md#刪除專案後清理原始檔) 處理，與單純撤銷邀請不同。
 
 ## 測試
 

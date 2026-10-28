@@ -74,11 +74,13 @@ NEXT_PUBLIC_API_BASE_URL=https://api.context-flow.fengyenchia.com/api
 - `RESEND_API_KEY=re_...`（只放 backend，不要加 `NEXT_PUBLIC_`）
 - `EMAIL_FROM=ContextFlow <noreply@fengyenchia.com>`（寄件網域必須先在 Resend 驗證）
 
-Backend production 至少需要 JWT secrets、`DATABASE_URL`、API Key encryption key 與寄信設定；檔案功能另需 R2。即時共編另需 Backend 的 `LIVEBLOCKS_SECRET_KEY` 及 `COLLABORATION_ENABLED=true`，切換與驗收見 [即時共編](16-realtime-collaboration.md)。備份限制與自動清理啟用時需要 Inngest，其他功能不需設定。
+Backend production 至少需要 JWT secrets、`DATABASE_URL`、API Key encryption key 與寄信設定；檔案功能另需 R2。即時共編另需 Backend 的 `LIVEBLOCKS_SECRET_KEY` 及 `COLLABORATION_ENABLED=true`，切換與驗收見 [即時共編](16-realtime-collaboration.md)。備份限制或原檔清理啟用時需要 Inngest，其他功能不需設定。
 
 畫布自動備份另需 `CANVAS_BACKUP_ENABLED=true`、`CANVAS_BACKUP_BUCKET_NAME` 與 `LIVEBLOCKS_WEBHOOK_SECRET`，並在 Liveblocks 訂閱 `ydocUpdated`；私人 bucket、權限與驗收見 [畫布備份](17-canvas-backups.md)。不需要 migration，Frontend 無需新增變數。
 
 單一專案邀請另需先套用 migration 0005，再設定 Backend `PROJECT_INVITES_ENABLED=true`；不需新服務或 Frontend 變數。請依 [邀請部署順序](18-project-invitations.md) 操作，避免先啟用旗標卻尚未建立資料表。
+
+刪除專案後清理原檔另設 `R2_PROJECT_CLEANUP_ENABLED=true`，沿用 Inngest 的兩個 key，不需 migration。先部署關閉旗標的新版、Resync 確認 `daily-original-file-cleanup`／`original-project-file-cleanup`，再啟用及重新部署、Resync。每日台灣時間 11:47 掃描，至少 24 小時寬限後清理，規則與正式驗收見 [R2](03-cloudflare-r2.md#刪除專案後清理原始檔)。
 
 Backend 需填的變數名稱（值從本機安全複製，沿用已有加密 key 才能解密既有 Gemini Key）：`DATABASE_URL`、`JWT_ACCESS_SECRET`、`JWT_REFRESH_SECRET`、`USER_API_KEY_ENCRYPTION_KEY`、`RESEND_API_KEY`、`EMAIL_FROM`、`R2_ACCOUNT_ID`、`R2_BUCKET_NAME`、`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`、`FRONTEND_URL`、`PUBLIC_APP_URL`、`GEMINI_MODEL`（沿用目前值）、`DATA_MODE=neon`、`ENABLE_EXPERIMENTAL_COREPACK=1`。`NODE_ENV` 由 Vercel 正式 build/runtime 提供即可，不必手動覆寫。
 

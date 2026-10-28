@@ -11,11 +11,13 @@ Drizzle schema 位於 `backend/src/db/schema.ts`；migration 與 snapshots 位�
 > [!IMPORTANT]
 > 正式資料庫重新部署時不需重跑已套用的 migration。執行遷移前先確認連線目標、備份與 ledger。
 
-既有正式資料庫已套用到 0004，其中 0003 的 ledger hash 與 repository 版本不同。請勿覆寫 ledger 或重跑 0003；新增結構變更應建立新的 migration。
+各環境已套用的版本以 ledger 為準。執行前比對 migration hash 與 schema；若已套用版本的 hash 與 repository 不同，先釐清遷移來源，不覆寫 ledger 或重跑已套用的 migration。新增結構變更應建立新的 migration。
 
 0003 在尚未套用的環境會將舊表改名 `app_state_legacy_backup`；0004 新增 `email_verification_tokens`。應保留 migration 與 snapshots，供新環境建置及遷移比對使用。
 
 0005 新增單一專案邀請連結及授權資料表。新程式在 `PROJECT_INVITES_ENABLED` 未啟用時不讀新表；先完成備份、套用新增 migration，再開啟功能，見 [專案邀請部署](18-project-invitations.md)。
+
+原始檔清理不新增資料表或 migration，寬限期標記保存在原上傳 R2 bucket。若要還原整個 Neon 分支，先關閉 `R2_PROJECT_CLEANUP_ENABLED` 並等執行中的清理結束，完成資料與檔案核對後再啟用，避免把還原期間的暫時狀態當成已刪除專案。已被清除的原始檔不會因還原 Neon 自動出現，需要仍保留中的畫布附件備份或另存原檔。
 
 ## 全新環境
 

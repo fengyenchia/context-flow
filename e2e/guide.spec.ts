@@ -12,13 +12,15 @@ test('manual is public, indexed, and documents the actual editing and export wor
   await expect(page.locator('meta[name="robots"]')).not.toHaveAttribute('content', /noindex/);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('使用手冊');
   const article = page.getByRole('article', { name: '操作說明' });
-  await expect(article.locator('section')).toHaveCount(13);
+  await expect(article.locator('section')).toHaveCount(14);
   for (const text of ['雙擊修改標題、內容或顏色', '建立與編輯連線', '角色差異', 'PDF：用列印視窗另存', 'PNG：解壓縮後依區域閱讀']) {
     await expect(article.getByRole('heading', { name: text, exact: true })).toBeAttached();
   }
   await expect(article).toContainText('不提供 PDF 全文解析或 RAG 檢索');
   await expect(article).toContainText('不會自動合併');
   await expect(article).toContainText('不超過 20 MB');
+  await expect(article).toContainText('24 小時是清理寬限期，不是復原期限');
+  await expect(article).toContainText('原檔清理不會刪除這些備份副本');
   await expect(article).toContainText('右鍵拖曳經過連線也可能刪線');
   await page.keyboard.press('Tab');
   await expect(page.getByRole('link', { name: '跳至主要內容' })).toBeFocused();
@@ -26,7 +28,7 @@ test('manual is public, indexed, and documents the actual editing and export wor
   await expect(page.locator('#main-content')).toBeFocused();
   const toc = page.getByRole('navigation', { name: '手冊目錄' });
   const links = toc.getByRole('link');
-  await expect(links).toHaveCount(13);
+  await expect(links).toHaveCount(14);
   for (const link of await links.all()) {
     const href = await link.getAttribute('href');
     expect(href).toMatch(/^#[a-z]+$/);

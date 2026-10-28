@@ -8,6 +8,7 @@ Next.js 16 Route Handlers API，開發埠 3001，base URL 為 `http://localhost:
 | `server/auth.ts`、`password.ts`、`rate-limit.ts` | JWT、session、scrypt 與每程序登入操作限流 |
 | `server/state.ts`、`persistence.ts` | 狀態、授權與 Neon 差異交易保存 |
 | `server/files.ts` | 私人 R2 預簽上傳、大小確認與授權下載 |
+| `server/original-file-cleanup.ts`、`original-file-references.ts`、`file-cleanup-jobs.ts` | 已刪除專案的原始物件清理、Neon 引用核對及 Inngest 每日工作；設定見 [R2](../docs/03-cloudflare-r2.md) |
 | `server/collaboration.ts` | Liveblocks 私人房間、ID token、角色同步及舊畫布匯入 |
 | `server/project-invites.ts` | 專案邀請連結、加入期限、角色與撤銷；資料表與部署見 [專案邀請](../docs/18-project-invitations.md) |
 | `server/canvas-backups.ts`、`server/backup-lock.ts`、`server/inngest.ts`、`app/api/webhooks/liveblocks/route.ts` | 簽章驗證、私人 R2 備份及還原；選用 Inngest 延後備份與安全清理，設定見 [畫布備份](../docs/17-canvas-backups.md) |
